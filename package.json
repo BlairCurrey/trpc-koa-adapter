@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "author": "Blair Currey",
   "description": "Koa adapter for tRPC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BlairCurrey/trpc-koa-adapter"
+},
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
