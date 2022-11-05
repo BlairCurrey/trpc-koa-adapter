@@ -1,27 +1,25 @@
 import Koa from 'koa';
 import { createKoaMiddleware } from '../dist';
 import request from 'supertest';
-import { router } from '@trpc/server';
+import { initTRPC } from '@trpc/server';
 
 const ALL_USERS = [
   { id: 1, name: 'bob' },
   { id: 2, name: 'alice' },
 ];
 
-const trpcRouter = router()
-  .query('users', {
-    output: Object,
-    async resolve() {
-      return ALL_USERS;
-    },
-  })
-  .query('user', {
-    input: Number,
-    output: Object,
-    async resolve(req) {
+const trpc = initTRPC.create();
+const trpcRouter = trpc.router({
+  users: trpc.procedure.output(Object).query(() => {
+    return ALL_USERS;
+  }),
+  user: trpc.procedure
+    .input(Number)
+    .output(Object)
+    .query((req) => {
       return ALL_USERS.find((user) => req.input === user.id);
-    },
-  });
+    }),
+});
 
 const app = new Koa();
 const adapter = createKoaMiddleware({

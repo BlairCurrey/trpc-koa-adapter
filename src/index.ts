@@ -1,4 +1,5 @@
-import { AnyRouter, inferRouterContext, resolveHTTPResponse } from '@trpc/server';
+import { AnyRouter, inferRouterContext } from '@trpc/server';
+import { resolveHTTPResponse } from '@trpc/server/http';
 import { Middleware } from 'koa';
 
 export const createKoaMiddleware =

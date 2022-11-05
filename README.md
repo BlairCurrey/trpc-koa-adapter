@@ -16,19 +16,20 @@ const ALL_USERS = [
   { id: 2, name: 'alice' },
 ];
 
-const trpcRouter = router()
-  .query('user', {
-    input: Number,
-    output: Object,
-    async resolve(req) {
+const trpc = initTRPC.create();
+const trpcRouter = trpc.router({
+  user: trpc.procedure
+    .input(Number)
+    .output(Object)
+    .query((req) => {
       return ALL_USERS.find((user) => req.input === user.id);
-    },
-  });
+    })
+});
 
 const app = new Koa();
 const adapter = createKoaMiddleware({
   router: trpcRouter,
-  createContext: async () => {},
+  createContext: async () => { return {}; }
 });
 app.use(adapter);
 app.listen(4000);
