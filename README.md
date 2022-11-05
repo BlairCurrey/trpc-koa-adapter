@@ -8,7 +8,7 @@ See `./test/trpcKoaAdapter.test.ts` for example usage.
 
 ```ts
 import Koa from 'koa';
-import { trpcKoaAdapter } from 'trpc-koa-adapter';
+import { createKoaMiddleware } from 'trpc-koa-adapter';
 import { router } from '@trpc/server';
 
 const ALL_USERS = [
@@ -26,7 +26,7 @@ const trpcRouter = router()
   });
 
 const app = new Koa();
-const adapter = trpcKoaAdapter({
+const adapter = createKoaMiddleware({
   router: trpcRouter,
   createContext: async () => {},
 });

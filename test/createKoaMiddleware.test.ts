@@ -1,5 +1,5 @@
 import Koa from 'koa';
-import { trpcKoaAdapter } from '../src';
+import { createKoaMiddleware } from '../dist';
 import request from 'supertest';
 import { router } from '@trpc/server';
 
@@ -24,7 +24,7 @@ const trpcRouter = router()
   });
 
 const app = new Koa();
-const adapter = trpcKoaAdapter({
+const adapter = createKoaMiddleware({
   router: trpcRouter,
   createContext: async () => {
     return {};

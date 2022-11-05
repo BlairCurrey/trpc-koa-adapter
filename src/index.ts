@@ -1,7 +1,7 @@
 import { AnyRouter, inferRouterContext, resolveHTTPResponse } from '@trpc/server';
 import { Middleware } from 'koa';
 
-export const trpcKoaAdapter =
+export const createKoaMiddleware =
   <TRouter extends AnyRouter>({
     router,
     createContext,
