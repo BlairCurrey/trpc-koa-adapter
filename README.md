@@ -9,7 +9,7 @@ See `./test/trpcKoaAdapter.test.ts` for example usage.
 ```ts
 import Koa from 'koa';
 import { createKoaMiddleware } from 'trpc-koa-adapter';
-import { router } from '@trpc/server';
+import { initTRPC } from '@trpc/server';
 
 const ALL_USERS = [
   { id: 1, name: 'bob' },
