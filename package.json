@@ -1,6 +1,6 @@
 {
   "name": "trpc-koa-adapter",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "author": "Blair Currey",
   "description": "Koa adapter for tRPC",
   "repository": {
