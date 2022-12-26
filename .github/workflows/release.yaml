@@ -16,7 +16,7 @@ jobs:
           node-version: "18.x"
       - uses: pnpm/action-setup@v2
       - run: pnpm install
-      - run: pnpm run build --if-present
+      - run: pnpm build
       - run: pnpm test
       - run: npx semantic-release
         env:
