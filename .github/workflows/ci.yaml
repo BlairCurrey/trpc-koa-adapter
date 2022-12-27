@@ -1,5 +1,5 @@
 name: CI
-
+# adding this comment as a gh action test. to be removed in follow-up commit
 on:
   pull_request:
     branches: [ master ]
