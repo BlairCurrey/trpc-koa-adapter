@@ -6,12 +6,16 @@ export const createKoaMiddleware =
   <TRouter extends AnyRouter>({
     router,
     createContext,
+    prefix,
   }: {
     router: TRouter;
     createContext: () => Promise<inferRouterContext<TRouter>>;
+    prefix?: `/${string}`;
   }): Middleware =>
-  async (ctx) => {
+  async (ctx, next) => {
     const { req, res, request } = ctx;
+
+    if (prefix && !request.path.startsWith(prefix)) return next();
 
     // koa uses 404 as a default status but some logic in
     // nodeHTTPRequestHandler assumes default status of 200.
@@ -25,6 +29,6 @@ export const createKoaMiddleware =
       createContext,
       req,
       res,
-      path: request.path.slice(1),
+      path: request.path.slice((prefix?.length ?? 0) + 1),
     });
   };
