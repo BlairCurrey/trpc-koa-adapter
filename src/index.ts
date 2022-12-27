@@ -1,5 +1,5 @@
 import { AnyRouter, inferRouterContext } from '@trpc/server';
-import { resolveHTTPResponse } from '@trpc/server/http';
+import { nodeHTTPRequestHandler } from '@trpc/server/adapters/node-http';
 import { Middleware } from 'koa';
 
 export const createKoaMiddleware =
@@ -11,28 +11,20 @@ export const createKoaMiddleware =
     createContext: () => Promise<inferRouterContext<TRouter>>;
   }): Middleware =>
   async (ctx) => {
-    const {
-      status,
-      body,
-      headers: resolvedHeaders,
-    } = await resolveHTTPResponse({
+    const { req, res, request } = ctx;
+
+    // koa uses 404 as a default status but some logic in
+    // nodeHTTPRequestHandler assumes default status of 200.
+    // https://github.com/trpc/trpc/blob/abc941152b71ff2d68c63156eb5a142174779261/packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts#L63
+    res.statusCode = 200;
+
+    // could use resolveHTTPResponse if a more custom koa fit is needed, but
+    // this would require re-implementing much of nodeHTTPRequestHandler here
+    await nodeHTTPRequestHandler({
       router,
-      path: ctx.request.path.slice(1),
       createContext,
-      req: {
-        method: ctx.request.method,
-        query: new URLSearchParams(ctx.request.querystring),
-        headers: ctx.request.headers,
-        body: ctx.body,
-      },
-    });
-
-    ctx.response.status = status;
-    ctx.body = body;
-
-    const headers = resolvedHeaders ?? {};
-    Object.keys(headers).forEach((header) => {
-      const value = headers[header];
-      if (typeof value !== 'undefined') ctx.set(header, value);
+      req,
+      res,
+      path: request.path.slice(1),
     });
   };

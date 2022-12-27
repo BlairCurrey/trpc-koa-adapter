@@ -19,6 +19,11 @@ const trpcRouter = trpc.router({
     .query((req) => {
       return ALL_USERS.find((user) => req.input === user.id);
     }),
+  createUser: trpc.procedure.input(Object).mutation((req) => {
+    const newUser = { id: Math.random(), name: req.input.name };
+    ALL_USERS.push(newUser);
+    return newUser;
+  }),
 });
 
 const app = new Koa();
@@ -33,7 +38,7 @@ const server = app.listen(3089);
 
 afterAll(() => server.close());
 
-describe('trpcKoaAdapter', () => {
+describe('createKoaMiddleware', () => {
   it('should return a function', function () {
     expect(typeof adapter).toBe('function');
   });
@@ -42,24 +47,47 @@ describe('trpcKoaAdapter', () => {
   });
 });
 
-describe('Can call tRPC server endpoints succesfully', function () {
-  it('GET /users', async function () {
-    const response = await request(server).get('/users').set('content-type', 'application/json');
+describe('API calls', function () {
+  describe('Can call tRPC server endpoints succesfully', function () {
+    it('GET /users', async function () {
+      const response = await request(server).get('/users').set('content-type', 'application/json');
 
-    expect(response.headers['content-type']).toMatch(/json/);
-    expect(response.status).toEqual(200);
-    expect(response.body.result.data).toEqual(ALL_USERS);
+      expect(response.headers['content-type']).toMatch(/json/);
+      expect(response.status).toEqual(200);
+      expect(response.body.result.data).toEqual(ALL_USERS);
+    });
+
+    it('GET /user?id=1', async function () {
+      const id = 1;
+      const response = await request(server)
+        .get('/user')
+        .set('content-type', 'application/json')
+        .query({ input: id });
+
+      expect(response.headers['content-type']).toMatch(/json/);
+      expect(response.status).toEqual(200);
+      expect(response.body.result.data).toEqual(ALL_USERS.find((user) => user.id === id));
+    });
+
+    it('POST /createUser', async function () {
+      const response = await request(server)
+        .post('/createUser')
+        .send({ name: 'eve' })
+        .set('content-type', 'application/json');
+      const { data: newUser } = response.body.result;
+
+      expect(response.headers['content-type']).toMatch(/json/);
+      expect(response.status).toEqual(200);
+      expect(newUser).toEqual(ALL_USERS.find((user) => user.id === newUser.id));
+    });
   });
+  describe('Bad requests fail as expected', function () {
+    it('GET /some-non-existent-route', async function () {
+      const response = await request(server)
+        .get('/some-non-existent-route')
+        .set('content-type', 'application/json');
 
-  it('GET /user?id=1', async function () {
-    const id = 1;
-    const response = await request(server)
-      .get('/user')
-      .set('content-type', 'application/json')
-      .query({ input: id });
-
-    expect(response.headers['content-type']).toMatch(/json/);
-    expect(response.status).toEqual(200);
-    expect(response.body.result.data).toEqual(ALL_USERS.find((user) => user.id === id));
+      expect(response.status).toEqual(404);
+    });
   });
 });
