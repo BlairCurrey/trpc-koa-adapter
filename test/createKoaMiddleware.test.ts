@@ -1,7 +1,7 @@
 import Koa from 'koa';
-import { createKoaMiddleware } from '../dist';
+import { createKoaMiddleware, CreateTrpcKoaContextOptions } from '../dist';
 import request from 'supertest';
-import { initTRPC } from '@trpc/server';
+import { inferAsyncReturnType, initTRPC } from '@trpc/server';
 import * as nodeHTTPAdapter from '@trpc/server/adapters/node-http';
 
 const ALL_USERS = [
@@ -9,7 +9,17 @@ const ALL_USERS = [
   { id: 2, name: 'alice' },
 ];
 
-const trpc = initTRPC.create();
+const createContext = async ({ req, res }: CreateTrpcKoaContextOptions) => {
+  return {
+    req,
+    res,
+    isAuthed: () => req.headers.authorization === 'trustme',
+  };
+};
+
+type TrpcContext = inferAsyncReturnType<typeof createContext>;
+
+const trpc = initTRPC.context<TrpcContext>().create();
 const trpcRouter = trpc.router({
   users: trpc.procedure.output(Object).query(() => {
     return ALL_USERS;
@@ -20,27 +30,40 @@ const trpcRouter = trpc.router({
     .query((req) => {
       return ALL_USERS.find((user) => req.input === user.id);
     }),
-  createUser: trpc.procedure.input(Object).mutation((req) => {
-    const newUser = { id: Math.random(), name: req.input.name };
+  createUser: trpc.procedure.input(Object).mutation(({ input, ctx }) => {
+    if (!ctx.isAuthed()) {
+      ctx.res.statusCode = 401;
+      return;
+    }
+
+    const newUser = { id: Math.random(), name: input.name };
     ALL_USERS.push(newUser);
+
     return newUser;
   }),
 });
 
 const app = new Koa();
+
 const adapter = createKoaMiddleware({
   router: trpcRouter,
-  createContext: async () => {
-    return {};
-  },
+  createContext,
   prefix: '/trpc',
 });
+
 app.use(adapter);
+
 const server = app.listen(3089);
 
 afterAll(() => server.close());
 
 describe('createKoaMiddleware', () => {
+  // re-initialize trpc router. top-level createContext type was
+  // registered to top-level router, which would result in
+  // a type error if used in createKoaMiddleware function with a
+  // different createContext return type
+  const router = initTRPC.create().router({});
+
   it('should return a function accepting 2 arguments', () => {
     expect(typeof adapter).toBe('function');
     expect(adapter.length).toBe(2);
@@ -50,7 +73,7 @@ describe('createKoaMiddleware', () => {
   });
   it('createKoaMiddleware should call nodeHTTPRequestHandler if request prefix matches', () => {
     const trpcAdapterWithPrefix = createKoaMiddleware({
-      router: trpcRouter,
+      router,
       createContext: async () => {
         return {};
       },
@@ -83,7 +106,7 @@ describe('createKoaMiddleware', () => {
   });
   it('createKoaMiddleware should call nodeHTTPRequestHandler if no prefix set', () => {
     const trpcAdapterWithoutPrefix = createKoaMiddleware({
-      router: trpcRouter,
+      router,
       createContext: async () => {
         return {};
       },
@@ -115,7 +138,7 @@ describe('createKoaMiddleware', () => {
   });
   it('createKoaMiddleware should call next and not process request if prefix set and request doesnt have prefix', () => {
     const trpcAdapterWithPrefix = createKoaMiddleware({
-      router: trpcRouter,
+      router,
       createContext: async () => {
         return {};
       },
@@ -168,12 +191,23 @@ describe('API calls', () => {
       const response = await request(server)
         .post('/trpc/createUser')
         .send({ name: 'eve' })
-        .set('content-type', 'application/json');
+        .set('content-type', 'application/json')
+        .set('authorization', 'trustme');
       const { data: newUser } = response.body.result;
 
       expect(response.headers['content-type']).toMatch(/json/);
       expect(response.status).toEqual(200);
       expect(newUser).toEqual(ALL_USERS.find((user) => user.id === newUser.id));
+    });
+
+    it('POST /createUser: failed auth sets status (using ctx)', async () => {
+      const response = await request(server)
+        .post('/trpc/createUser')
+        .send({ name: 'eve' })
+        .set('content-type', 'application/json');
+
+      expect(response.headers['content-type']).toMatch(/json/);
+      expect(response.status).toEqual(401);
     });
   });
   describe('Bad requests fail as expected', () => {
