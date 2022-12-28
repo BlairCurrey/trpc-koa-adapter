@@ -1,3 +1,10 @@
+## [1.1.2](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.1...v1.1.2) (2022-12-28)
+
+
+### :bug: Fixes
+
+* context type ([#13](https://github.com/BlairCurrey/trpc-koa-adapter/issues/13)) ([9932521](https://github.com/BlairCurrey/trpc-koa-adapter/commit/9932521bc081cba42c41e0181ce110a7d13dd9d4))
+
 ## [1.1.1](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.0...v1.1.1) (2022-12-28)
 
 
