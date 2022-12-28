@@ -1,18 +1,28 @@
-import { AnyRouter, inferRouterContext } from '@trpc/server';
-import { nodeHTTPRequestHandler } from '@trpc/server/adapters/node-http';
+import { AnyRouter } from '@trpc/server';
+import {
+  NodeHTTPCreateContextFnOptions,
+  NodeHTTPHandlerOptions,
+  nodeHTTPRequestHandler,
+} from '@trpc/server/adapters/node-http';
 import { Middleware } from 'koa';
+import { IncomingMessage, ServerResponse } from 'http';
+
+export type CreateTrpcKoaContextOptions = NodeHTTPCreateContextFnOptions<
+  IncomingMessage,
+  ServerResponse<IncomingMessage>
+>;
+export type AdditionalMiddlewareOpts = { prefix?: `/${string}` };
+export type CreateKoaMiddlewareOptions<TRouter extends AnyRouter> = NodeHTTPHandlerOptions<
+  TRouter,
+  IncomingMessage,
+  ServerResponse<IncomingMessage>
+> &
+  AdditionalMiddlewareOpts;
 
 export const createKoaMiddleware =
-  <TRouter extends AnyRouter>({
-    router,
-    createContext,
-    prefix,
-  }: {
-    router: TRouter;
-    createContext: () => Promise<inferRouterContext<TRouter>>;
-    prefix?: `/${string}`;
-  }): Middleware =>
+  <TRouter extends AnyRouter>(opts: CreateKoaMiddlewareOptions<TRouter>): Middleware =>
   async (ctx, next) => {
+    const { prefix, router, createContext } = opts;
     const { req, res, request } = ctx;
 
     if (prefix && !request.path.startsWith(prefix)) return next();
@@ -22,8 +32,6 @@ export const createKoaMiddleware =
     // https://github.com/trpc/trpc/blob/abc941152b71ff2d68c63156eb5a142174779261/packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts#L63
     res.statusCode = 200;
 
-    // could use resolveHTTPResponse if a more custom koa fit is needed, but
-    // this would require re-implementing much of nodeHTTPRequestHandler here
     await nodeHTTPRequestHandler({
       router,
       createContext,
