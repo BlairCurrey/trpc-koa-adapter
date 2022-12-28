@@ -72,13 +72,7 @@ describe('createKoaMiddleware', () => {
     expect(createKoaMiddleware.length).toBe(1);
   });
   it('createKoaMiddleware should call nodeHTTPRequestHandler if request prefix matches', () => {
-    const trpcAdapterWithPrefix = createKoaMiddleware({
-      router,
-      createContext: async () => {
-        return {};
-      },
-      prefix: '/trpc',
-    });
+    const trpcAdapterWithPrefix = createKoaMiddleware({ router, prefix: '/trpc' });
 
     const mockCtxWithPrefix = {
       request: {
@@ -105,12 +99,7 @@ describe('createKoaMiddleware', () => {
     });
   });
   it('createKoaMiddleware should call nodeHTTPRequestHandler if no prefix set', () => {
-    const trpcAdapterWithoutPrefix = createKoaMiddleware({
-      router,
-      createContext: async () => {
-        return {};
-      },
-    });
+    const trpcAdapterWithoutPrefix = createKoaMiddleware({ router });
 
     const mockCtxWithPrefix = {
       request: {
@@ -137,13 +126,7 @@ describe('createKoaMiddleware', () => {
     });
   });
   it('createKoaMiddleware should call next and not process request if prefix set and request doesnt have prefix', () => {
-    const trpcAdapterWithPrefix = createKoaMiddleware({
-      router,
-      createContext: async () => {
-        return {};
-      },
-      prefix: '/trpc',
-    });
+    const trpcAdapterWithPrefix = createKoaMiddleware({ router, prefix: '/trpc' });
 
     const mockCtx = {
       request: {
