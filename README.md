@@ -1,12 +1,18 @@
 # trpc-koa-adapter
 
-This is an adapter which allows you to integrate tRPC with a Koa server. This is similar to the [trpc/packages/server/src/adapters/express.ts](https://github.com/trpc/trpc/blob/next/packages/server/src/adapters/express.ts) adapter.
+This is an adapter which allows you to mount tRPC onto a Koa server. This is similar to the [trpc/packages/server/src/adapters/express.ts](https://github.com/trpc/trpc/blob/next/packages/server/src/adapters/express.ts) adapter.
 
 # How to add tRPC to a Koa server
 
-Initialize a tRPC router and pass into `createKoaMiddleware` with a `createContext` function. You can also set a `prefix` for the trpc routes.
+Initialize a tRPC router and pass into `createKoaMiddleware` with the following parameters: 
 
-This functionality is demosntrated in `./test/createKoaMiddleware` as well as in this more abbreviated example:
+- router (required): the trpc router
+- createContext (optional): a function returning the trpc context. If defined, the type should be registered on trpc initialization as shown in an example below and the trpc docs: https://trpc.io/docs/context
+- prefix (optional): what to prefix the trpc routes with, such as `/trpc`
+
+In addition to these examples, see the implementations in [`./test/createKoaMiddleware`](https://github.com/BlairCurrey/trpc-koa-adapter/blob/master/test/createKoaMiddleware.test.ts).
+
+Example:
 
 ```ts
 import Koa from 'koa';
@@ -31,7 +37,6 @@ const trpcRouter = trpc.router({
 const app = new Koa();
 const adapter = createKoaMiddleware({
   router: trpcRouter,
-  createContext: async () => { return {}; },
   prefix: '/trpc'
 });
 app.use(adapter);
@@ -46,4 +51,41 @@ curl -X GET "http://localhost:4000/trpc/user?input=1" -H 'content-type: applicat
 Returns:    
 ```json
 { "id": 1, "name": "bob" }
+```
+
+Using the context:
+
+```ts
+const createContext = async ({ req, res }: CreateTrpcKoaContextOptions) => {
+  return {
+    req,
+    res,
+    isAuthed: () => req.headers.authorization === 'trustme',
+  };
+};
+
+type TrpcContext = inferAsyncReturnType<typeof createContext>;
+
+const trpc = initTRPC.context<TrpcContext>().create();
+
+const trpcRouter = trpc.router({
+  createUser: trpc.procedure.input(Object).mutation(({ input, ctx }) => {
+    // ctx should be fully typed here
+    if (!ctx.isAuthed()) {
+      ctx.res.statusCode = 401;
+      return;
+    }
+
+    const newUser = { id: Math.random(), name: input.name };
+    ALL_USERS.push(newUser);
+
+    return newUser;
+  })
+});
+
+const adapter = createKoaMiddleware({
+  router: trpcRouter,
+  createContext,
+  prefix: '/trpc',
+});
 ```
