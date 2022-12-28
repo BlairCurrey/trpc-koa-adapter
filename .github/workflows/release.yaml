@@ -16,10 +16,11 @@ jobs:
           node-version: "18.x"
       - uses: pnpm/action-setup@v2
       - run: pnpm install
+        env:
+          HUSKY: 0
       - run: pnpm build
       - run: pnpm test
       - run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          HUSKY: 0
