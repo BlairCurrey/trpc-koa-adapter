@@ -15,4 +15,5 @@ module.exports = {
     '^.+\\.(ts|tsx)$': 'ts-jest',
   },
   transformIgnorePatterns: ['/node_modules/', '\\.pnp\\.[^\\/]+$'],
+  // testEnvironment: './test/customEnvironment.js'
 };
