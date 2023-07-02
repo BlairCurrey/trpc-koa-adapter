@@ -89,17 +89,3 @@ const adapter = createKoaMiddleware({
   prefix: '/trpc',
 });
 ```
-
-# Development
-
-The project uses `pnpm` for package management.
-
-To get started clone the repo, install packages, build, and ensure tests pass:
-
-    git clone https://github.com/BlairCurrey/trpc-koa-adapter.git
-    cd trpc-koa-adapter
-    pnpm i
-    pnpm build
-    pnpm test
-
-Git commit messages must follow [conventional commit standard](https://github.com/conventional-changelog/commitlint/tree/master/%40commitlint/config-conventional) (enforced by husky hooks). Versioning is handle by github actions and is determined by commit messages according to the [semantic-release](https://github.com/semantic-release/semantic-release#commit-message-format) rules and [`.releaserc`](.releaserc) configuration.
