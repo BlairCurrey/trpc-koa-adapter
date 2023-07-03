@@ -1,3 +1,15 @@
+## [1.1.3](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.2...v1.1.3) (2023-07-03)
+
+
+### :bug: Fixes
+
+* update deps ([#22](https://github.com/BlairCurrey/trpc-koa-adapter/issues/22)) ([fccb3d6](https://github.com/BlairCurrey/trpc-koa-adapter/commit/fccb3d653c1a5841ec0a43b51029653f84379965))
+
+
+### :memo: Documentation
+
+* add development info ([3d708b0](https://github.com/BlairCurrey/trpc-koa-adapter/commit/3d708b0c5ea10d744c953f19c684993e56711a2a))
+
 ## [1.1.2](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.1...v1.1.2) (2022-12-28)
 
 
