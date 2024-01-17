@@ -22,7 +22,7 @@ export type CreateKoaMiddlewareOptions<TRouter extends AnyRouter> = NodeHTTPHand
 export const createKoaMiddleware =
   <TRouter extends AnyRouter>(opts: CreateKoaMiddlewareOptions<TRouter>): Middleware =>
   async (ctx, next) => {
-    const { prefix, router, createContext } = opts;
+    const { prefix } = opts;
     const { req, res, request } = ctx;
 
     if (prefix && !request.path.startsWith(prefix)) return next();
@@ -33,8 +33,7 @@ export const createKoaMiddleware =
     res.statusCode = 200;
 
     await nodeHTTPRequestHandler({
-      router,
-      createContext,
+      ...opts,
       req,
       res,
       path: request.path.slice((prefix?.length ?? 0) + 1),
