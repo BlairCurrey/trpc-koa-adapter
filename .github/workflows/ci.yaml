@@ -1,18 +1,19 @@
-name: CI
+name: Build and Test
 
-on:
-  pull_request:
-    branches: [ master ]
+on: [push]
+
 jobs:
-  test:
-    name: Run Tests
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: "18.x"
-      - uses: pnpm/action-setup@v2
-      - run: pnpm install
-      - run: pnpm build
-      - run: pnpm test
+          node-version: '18.x'
+      - uses: pnpm/action-setup@v3
+      - name: Install Dependencies
+        run: pnpm install
+      - name: Build
+        run: pnpm build
+      - name: Test
+        run: pnpm test
