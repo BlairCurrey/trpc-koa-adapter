@@ -1,3 +1,15 @@
+## [1.2.0](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.3...v1.2.0) (2024-03-07)
+
+
+### :sparkles: Features
+
+* enable all trpc options ([#23](https://github.com/BlairCurrey/trpc-koa-adapter/issues/23)) ([6bb0a16](https://github.com/BlairCurrey/trpc-koa-adapter/commit/6bb0a1688460cb50081a53d1775c1dfcc5330503))
+
+
+### :repeat: CI
+
+* change ci name and trigger to all push ([#25](https://github.com/BlairCurrey/trpc-koa-adapter/issues/25)) ([4ee978c](https://github.com/BlairCurrey/trpc-koa-adapter/commit/4ee978c1f4efe92c300962ce7a7574e628cd094a))
+
 ## [1.1.3](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.2...v1.1.3) (2023-07-03)
 
 
