@@ -47,7 +47,7 @@ Returns:
 { "id": 1, "name": "bob" }
 ```
 
-# Middleware Arguments <a name="arguments"></a>
+# createKoaMiddleware Arguments <a name="arguments"></a>
 
 The middleware takes a configuration object with the following properties:
 
@@ -59,6 +59,45 @@ The middleware takes a configuration object with the following properties:
 | `nodeHTTPRequestHandler` options | Optional | Any of the options used by the underlying request handler. See trpc's [nodeHTTPRequestHandler](https://github.com/trpc/trpc/blob/next/packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts) for more details |
 
 # More exampels
+
+In addition to these examples, see the implementations in [`./test/createKoaMiddleware.test.ts`](https://github.com/BlairCurrey/trpc-koa-adapter/blob/master/test/createKoaMiddleware.test.ts).
+
+## Using the Context:
+
+```ts
+const createContext = async ({ req, res }: CreateTrpcKoaContextOptions) => {
+  return {
+    req,
+    res,
+    isAuthed: () => req.headers.authorization === 'trustme',
+  };
+};
+
+type TrpcContext = inferAsyncReturnType<typeof createContext>;
+
+const trpc = initTRPC.context<TrpcContext>().create();
+
+const trpcRouter = trpc.router({
+  createUser: trpc.procedure.input(Object).mutation(({ input, ctx }) => {
+    // ctx should be fully typed here
+    if (!ctx.isAuthed()) {
+      ctx.res.statusCode = 401;
+      return;
+    }
+
+    const newUser = { id: Math.random(), name: input.name };
+    ALL_USERS.push(newUser);
+
+    return newUser;
+  }),
+});
+
+const adapter = createKoaMiddleware({
+  router: trpcRouter,
+  createContext,
+  prefix: '/trpc',
+});
+```
 
 ## With a Koa Body Parser:
 
@@ -100,46 +139,7 @@ app.use(
 );
 ```
 
-This bodparser issue originally discussed in [this github issue](https://github.com/BlairCurrey/trpc-koa-adapter/issues/24).
-
-## Using the Context:
-
-```ts
-const createContext = async ({ req, res }: CreateTrpcKoaContextOptions) => {
-  return {
-    req,
-    res,
-    isAuthed: () => req.headers.authorization === 'trustme',
-  };
-};
-
-type TrpcContext = inferAsyncReturnType<typeof createContext>;
-
-const trpc = initTRPC.context<TrpcContext>().create();
-
-const trpcRouter = trpc.router({
-  createUser: trpc.procedure.input(Object).mutation(({ input, ctx }) => {
-    // ctx should be fully typed here
-    if (!ctx.isAuthed()) {
-      ctx.res.statusCode = 401;
-      return;
-    }
-
-    const newUser = { id: Math.random(), name: input.name };
-    ALL_USERS.push(newUser);
-
-    return newUser;
-  }),
-});
-
-const adapter = createKoaMiddleware({
-  router: trpcRouter,
-  createContext,
-  prefix: '/trpc',
-});
-```
-
-In addition to these examples, see the implementations in [`./test/createKoaMiddleware`](https://github.com/BlairCurrey/trpc-koa-adapter/blob/master/test/createKoaMiddleware.test.ts).
+This body parsing issue was originally discussed in [this github issue](https://github.com/BlairCurrey/trpc-koa-adapter/issues/24).
 
 # Development
 
