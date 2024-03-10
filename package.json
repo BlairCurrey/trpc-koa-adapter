@@ -28,7 +28,7 @@
     "middleware",
     "typescript"
   ],
-  "packageManager": "pnpm@7.19.0",
+  "packageManager": "pnpm@8.15.4",
   "devDependencies": {
     "@commitlint/cli": "^17.6.6",
     "@commitlint/config-conventional": "^17.6.6",
