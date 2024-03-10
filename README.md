@@ -53,12 +53,12 @@ The middleware takes a configuration object with the following properties:
 
 | Option                           | Required | Description                                                                                                                                                                                                              |
 | -------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| router                           | Required | The trpc router to mount                                                                                                                                                                                                 |
-| createContext                    | Optional | A function returning the trpc context. If defined, the type should be registered on trpc initialization as shown in an example below and the trpc docs: https://trpc.io/docs/context                                     |
-| prefix                           | Optional | The prefix for trpc routes, such as `/trpc`                                                                                                                                                                              |
-| `nodeHTTPRequestHandler` options | Optional | Any of the options used by the underlying request handler. See trpc's [nodeHTTPRequestHandler](https://github.com/trpc/trpc/blob/next/packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts) for more details |
+| router                           | Required | The tRPC router to mount                                                                                                                                                                                                 |
+| createContext                    | Optional | A function returning the tRPC context. If defined, the type should be registered on tRPC initialization as shown in an example below and the tRPC docs: https://trpc.io/docs/context                                     |
+| prefix                           | Optional | The prefix for tRPC routes, such as `/trpc`                                                                                                                                                                              |
+| `nodeHTTPRequestHandler` options | Optional | Any of the options used by the underlying request handler. See tRPC's [nodeHTTPRequestHandler](https://github.com/trpc/trpc/blob/next/packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts) for more details |
 
-# More exampels
+# More examples
 
 In addition to these examples, see the implementations in [`./test/createKoaMiddleware.test.ts`](https://github.com/BlairCurrey/trpc-koa-adapter/blob/master/test/createKoaMiddleware.test.ts).
 
@@ -101,11 +101,11 @@ const adapter = createKoaMiddleware({
 
 ## With a Koa Body Parser:
 
-Body parsing middleware such as [`@koa/bodyparser`](https://github.com/koajs/bodyparser) and [`koa-bodyparser`](https://www.npmjs.com/package/koa-bodyparser) consume the raw body on requests which trpc expects. If this middleware is added to koa after one of these body parsers, or the body is otherwise consumed before this middleware, then trpc may unexpectedly fail to handle requests (such as trpc mutation requests hanging).
+Body parsing middleware such as [`@koa/bodyparser`](https://github.com/koajs/bodyparser) and [`koa-bodyparser`](https://www.npmjs.com/package/koa-bodyparser) consume the raw body on requests which tRPC expects. If this middleware is added to koa after one of these body parsers, or the body is otherwise consumed before this middleware, then tRPC may unexpectedly fail to handle requests (such as tRPC mutation requests hanging). This matter was originally discussed in [this GitHub issue](https://github.com/BlairCurrey/trpc-koa-adapter/issues/24).
 
 If using `@koa/bodyparser` or `koa-bodyparser`, you can resolve this in either of the following ways:
 
-- Add the trpc middleware before the body parser, if this otherwise works for you
+- Add the `createKoaMiddleware` before the body parser, if this otherwise works for you
 - Use `@koa/bodyparser` or `koa-bodyparser`'s `disableBodyParser` option to disable the body parser for the trpc routes:
 
   ```ts
@@ -125,7 +125,7 @@ If using `@koa/bodyparser` or `koa-bodyparser`, you can resolve this in either o
   );
   ```
 
-For `@koa/bodyparser` only, you can use the [`patchNode` option](https://github.com/koajs/bodyparser?tab=readme-ov-file#options) to patch the body on the request, which trpc can use instead of the raw body:
+For `@koa/bodyparser` only, you can use the [`patchNode` option](https://github.com/koajs/bodyparser?tab=readme-ov-file#options) to patch the body on the request, which tRPC can use instead of the raw body:
 
 ```ts
 const app = new Koa();
@@ -138,8 +138,6 @@ app.use(
   })
 );
 ```
-
-This body parsing issue was originally discussed in [this github issue](https://github.com/BlairCurrey/trpc-koa-adapter/issues/24).
 
 # Development
 
