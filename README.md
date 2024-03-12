@@ -99,45 +99,9 @@ const adapter = createKoaMiddleware({
 });
 ```
 
-## With a Koa Body Parser:
+# Note About Using With a Body Parser:
 
-Body parsing middleware such as [`@koa/bodyparser`](https://github.com/koajs/bodyparser) and [`koa-bodyparser`](https://www.npmjs.com/package/koa-bodyparser) consume the raw body on requests which tRPC expects. If this middleware is added to koa after one of these body parsers, or the body is otherwise consumed before this middleware, then tRPC may unexpectedly fail to handle requests (such as tRPC mutation requests hanging). This matter was originally discussed in [this GitHub issue](https://github.com/BlairCurrey/trpc-koa-adapter/issues/24).
-
-If using `@koa/bodyparser` or `koa-bodyparser`, you can resolve this in either of the following ways:
-
-- Add the `createKoaMiddleware` before the body parser, if this otherwise works for you
-- Use `@koa/bodyparser` or `koa-bodyparser`'s `disableBodyParser` option to disable the body parser for the trpc routes:
-
-  ```ts
-  const prefix = '/trpc';
-  const app = new Koa();
-
-  app.use(async (ctx, next) => {
-    if (ctx.path.startsWith(prefix)) ctx.disableBodyParser = true;
-    await next();
-  });
-  app.use(bodyParser());
-  app.use(
-    createKoaMiddleware({
-      router: appRouter,
-      prefix,
-    })
-  );
-  ```
-
-For `@koa/bodyparser` only, you can use the [`patchNode` option](https://github.com/koajs/bodyparser?tab=readme-ov-file#options) to patch the body on the request, which tRPC can use instead of the raw body:
-
-```ts
-const app = new Koa();
-
-app.use(bodyParser({ patchNode: true }));
-app.use(
-  createKoaMiddleware({
-    router: appRouter,
-    prefix,
-  })
-);
-```
+Using a bodyparser such as [`@koa/bodyparser`](https://github.com/koajs/bodyparser), [`koa-bodyparser`](https://www.npmjs.com/package/koa-bodyparser), or otherwise parsing the body will consume the data stream on the incoming request. To ensure that tRPC can handle the request, this library looks for the parsed body on `ctx.request.body`, which is where `@koa/bodyparser` and `koa-bodyparser` store the parsed body. If for some reason the parsed body is being stored somewhere else, and you need to parse the body before this middleware, the body will not be available to tRPC and mutations will fail.
 
 # Development
 
