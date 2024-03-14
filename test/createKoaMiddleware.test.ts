@@ -1,70 +1,31 @@
-import Koa from 'koa';
-import { createKoaMiddleware, CreateTrpcKoaContextOptions } from '../dist';
+import Koa, { Context } from 'koa';
+import { createKoaMiddleware, CreateTrpcKoaContextOptions } from '../src';
 import request from 'supertest';
 import { inferAsyncReturnType, initTRPC } from '@trpc/server';
 import * as nodeHTTPAdapter from '@trpc/server/adapters/node-http';
+import { Server } from 'http';
+import koaBodyParserOld from 'koa-bodyparser';
+import koaBodyParser from '@koa/bodyparser';
 
-const ALL_USERS = [
-  { id: 1, name: 'bob' },
-  { id: 2, name: 'alice' },
-];
-
-const createContext = async ({ req, res }: CreateTrpcKoaContextOptions) => {
-  return {
-    req,
-    res,
-    isAuthed: () => req.headers.authorization === 'trustme',
-  };
-};
-
-type TrpcContext = inferAsyncReturnType<typeof createContext>;
-
-const trpc = initTRPC.context<TrpcContext>().create();
-const trpcRouter = trpc.router({
-  users: trpc.procedure.output(Object).query(() => {
-    return ALL_USERS;
-  }),
-  user: trpc.procedure
-    .input(Number)
-    .output(Object)
-    .query((req) => {
-      return ALL_USERS.find((user) => req.input === user.id);
-    }),
-  createUser: trpc.procedure.input(Object).mutation(({ input, ctx }) => {
-    if (!ctx.isAuthed()) {
-      ctx.res.statusCode = 401;
-      return;
-    }
-
-    const newUser = { id: Math.random(), name: input.name };
-    ALL_USERS.push(newUser);
-
-    return newUser;
-  }),
-});
-
-const app = new Koa();
-
-const adapter = createKoaMiddleware({
-  router: trpcRouter,
-  createContext,
-  prefix: '/trpc',
-});
-
-app.use(adapter);
-
-const server = app.listen(3089);
-
-afterAll(() => server.close());
-
-describe('createKoaMiddleware', () => {
-  // re-initialize trpc router. top-level createContext type was
-  // registered to top-level router, which would result in
-  // a type error if used in createKoaMiddleware function with a
-  // different createContext return type
+describe('Unit', () => {
   const router = initTRPC.create().router({});
+  const next = jest.fn();
+  let spyNodeHTTPRequestHandler: jest.SpyInstance;
+
+  beforeEach(async () => {
+    spyNodeHTTPRequestHandler = jest
+      .spyOn(nodeHTTPAdapter, 'nodeHTTPRequestHandler')
+      .mockImplementationOnce(jest.fn());
+  });
+
+  afterEach(async () => {
+    jest.restoreAllMocks();
+  });
 
   it('should return a function accepting 2 arguments', () => {
+    const adapter = createKoaMiddleware({
+      router,
+    });
     expect(typeof adapter).toBe('function');
     expect(adapter.length).toBe(2);
   });
@@ -72,134 +33,203 @@ describe('createKoaMiddleware', () => {
     expect(createKoaMiddleware.length).toBe(1);
   });
   it('createKoaMiddleware should call nodeHTTPRequestHandler if request prefix matches', () => {
-    const trpcAdapterWithPrefix = createKoaMiddleware({ router, prefix: '/trpc' });
+    const adapter = createKoaMiddleware({ router, prefix: '/trpc' });
 
-    const mockCtxWithPrefix = {
+    const ctx = {
       request: {
         path: '/trpc/users',
       },
       req: {},
       res: {},
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
-    const mockNext = jest.fn(async () => {
-      return {};
-    });
-    const originalNodeHTTPRequestHandler = nodeHTTPAdapter.nodeHTTPRequestHandler;
-    Object.defineProperty(nodeHTTPAdapter, 'nodeHTTPRequestHandler', { value: jest.fn() });
-    const spyNodeHTTPRequestHandler = jest.spyOn(nodeHTTPAdapter, 'nodeHTTPRequestHandler');
+    } as Context;
 
-    trpcAdapterWithPrefix(mockCtxWithPrefix, mockNext);
+    adapter(ctx, next);
 
-    expect(mockNext.mock.calls.length).toBe(0);
+    expect(next).not.toHaveBeenCalled();
     expect(spyNodeHTTPRequestHandler).toHaveBeenCalled();
-
-    Object.defineProperty(nodeHTTPAdapter, 'nodeHTTPRequestHandler', {
-      value: originalNodeHTTPRequestHandler,
-    });
   });
   it('createKoaMiddleware should call nodeHTTPRequestHandler if no prefix set', () => {
-    const trpcAdapterWithoutPrefix = createKoaMiddleware({ router });
+    const adapter = createKoaMiddleware({ router });
 
-    const mockCtxWithPrefix = {
+    const ctx = {
       request: {
         path: '/users',
       },
       req: {},
       res: {},
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
-    const mockNext = jest.fn(async () => {
-      return {};
-    });
-    const originalNodeHTTPRequestHandler = nodeHTTPAdapter.nodeHTTPRequestHandler;
-    Object.defineProperty(nodeHTTPAdapter, 'nodeHTTPRequestHandler', { value: jest.fn() });
-    const spyNodeHTTPRequestHandler = jest.spyOn(nodeHTTPAdapter, 'nodeHTTPRequestHandler');
+    } as Context;
 
-    trpcAdapterWithoutPrefix(mockCtxWithPrefix, mockNext);
+    adapter(ctx, next);
 
-    expect(mockNext.mock.calls.length).toBe(0);
+    expect(next).not.toHaveBeenCalled();
     expect(spyNodeHTTPRequestHandler).toHaveBeenCalled();
-
-    Object.defineProperty(nodeHTTPAdapter, 'nodeHTTPRequestHandler', {
-      value: originalNodeHTTPRequestHandler,
-    });
   });
   it('createKoaMiddleware should call next and not process request if prefix set and request doesnt have prefix', () => {
-    const trpcAdapterWithPrefix = createKoaMiddleware({ router, prefix: '/trpc' });
+    const adapter = createKoaMiddleware({ router, prefix: '/trpc' });
 
-    const mockCtx = {
+    const ctx = {
       request: {
         path: '/users', // prefix missing from path
       },
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } as any;
-    const mockNext = jest.fn(async () => {
-      return {};
-    });
-    const spyNodeHTTPRequestHandler = jest.spyOn(nodeHTTPAdapter, 'nodeHTTPRequestHandler');
+    } as Context;
 
-    trpcAdapterWithPrefix(mockCtx, mockNext);
+    adapter(ctx, next);
 
-    expect(mockNext.mock.calls.length).toBe(1);
+    expect(next).toHaveBeenCalled();
     expect(spyNodeHTTPRequestHandler).not.toHaveBeenCalled();
+  });
+  it('createKoaMiddleware should call nodeHTTPRequestHandler with req.body if parsed body found on request.body', () => {
+    const adapter = createKoaMiddleware({ router });
+
+    const ctx = {
+      request: { path: '/users', body: { name: 'Person1', age: 20 } },
+      req: {},
+      res: {},
+    } as Context;
+    adapter(ctx, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(spyNodeHTTPRequestHandler).toBeCalledWith(
+      expect.objectContaining({ req: { body: ctx.request.body } })
+    );
   });
 });
 
-describe('API calls', () => {
-  describe('Can call tRPC server endpoints succesfully', () => {
-    it('GET /users', async () => {
-      const response = await request(server)
-        .get('/trpc/users')
-        .set('content-type', 'application/json');
+describe('Integration', () => {
+  const ALL_USERS = [
+    { id: 1, name: 'bob' },
+    { id: 2, name: 'alice' },
+  ];
 
-      expect(response.headers['content-type']).toMatch(/json/);
-      expect(response.status).toEqual(200);
-      expect(response.body.result.data).toEqual(ALL_USERS);
-    });
+  const createContext = async ({ req, res }: CreateTrpcKoaContextOptions) => {
+    return {
+      req,
+      res,
+      isAuthed: () => req.headers.authorization === 'trustme',
+    };
+  };
 
-    it('GET /user?id=1', async () => {
-      const id = 1;
-      const response = await request(server)
-        .get('/trpc/user')
-        .set('content-type', 'application/json')
-        .query({ input: id });
+  type TrpcContext = inferAsyncReturnType<typeof createContext>;
 
-      expect(response.headers['content-type']).toMatch(/json/);
-      expect(response.status).toEqual(200);
-      expect(response.body.result.data).toEqual(ALL_USERS.find((user) => user.id === id));
-    });
+  const trpc = initTRPC.context<TrpcContext>().create();
+  const trpcRouter = trpc.router({
+    users: trpc.procedure.output(Object).query(() => {
+      return ALL_USERS;
+    }),
+    user: trpc.procedure
+      .input(Number)
+      .output(Object)
+      .query((req) => {
+        return ALL_USERS.find((user) => req.input === user.id);
+      }),
+    createUser: trpc.procedure.input(Object).mutation(({ input, ctx }) => {
+      if (!ctx.isAuthed()) {
+        ctx.res.statusCode = 401;
+        return;
+      }
 
-    it('POST /createUser', async () => {
-      const response = await request(server)
-        .post('/trpc/createUser')
-        .send({ name: 'eve' })
-        .set('content-type', 'application/json')
-        .set('authorization', 'trustme');
-      const { data: newUser } = response.body.result;
+      const newUser = { id: Math.random(), name: input.name };
+      ALL_USERS.push(newUser);
 
-      expect(response.headers['content-type']).toMatch(/json/);
-      expect(response.status).toEqual(200);
-      expect(newUser).toEqual(ALL_USERS.find((user) => user.id === newUser.id));
-    });
-
-    it('POST /createUser: failed auth sets status (using ctx)', async () => {
-      const response = await request(server)
-        .post('/trpc/createUser')
-        .send({ name: 'eve' })
-        .set('content-type', 'application/json');
-
-      expect(response.headers['content-type']).toMatch(/json/);
-      expect(response.status).toEqual(401);
-    });
+      return newUser;
+    }),
   });
-  describe('Bad requests fail as expected', () => {
-    it('GET /some-non-existent-route', async () => {
-      const response = await request(server).get('/some-non-existent-route');
-      const response2 = await request(server).get('/trpc/some-non-existent-route');
 
-      expect(response.status).toEqual(404);
-      expect(response2.status).toEqual(404);
+  const adapter = createKoaMiddleware({
+    router: trpcRouter,
+    createContext,
+    prefix: '/trpc',
+  });
+
+  const testCases = [
+    {
+      description: 'Without body parser',
+      middleware: [],
+    },
+    {
+      description: 'With koa-bodyparser',
+      middleware: [koaBodyParserOld()],
+    },
+    {
+      description: 'With @koa/bodyparser',
+      middleware: [koaBodyParser()],
+    },
+    {
+      description: 'With @koa/bodyparser using patchNode',
+      middleware: [koaBodyParser({ patchNode: true, encoding: 'utf-8' })],
+    },
+  ];
+
+  testCases.forEach(({ description, middleware }) => {
+    describe(description, () => {
+      const app = new Koa();
+      middleware.forEach((middlewareItem) => app.use(middlewareItem));
+      app.use(adapter);
+      let server: Server;
+
+      beforeEach(async () => (server = app.listen(3098)));
+      afterEach(async () => {
+        if (server?.listening) {
+          await server.closeAllConnections();
+          await server.close();
+        }
+      });
+
+      describe('Can call tRPC server endpoints succesfully', () => {
+        it('GET /users', async () => {
+          const response = await request(server)
+            .get('/trpc/users')
+            .set('content-type', 'application/json');
+
+          expect(response.headers['content-type']).toMatch(/json/);
+          expect(response.status).toEqual(200);
+          expect(response.body.result.data).toEqual(ALL_USERS);
+        });
+
+        it('GET /user?id=1', async () => {
+          const id = 1;
+          const response = await request(server)
+            .get('/trpc/user')
+            .set('content-type', 'application/json')
+            .query({ input: id });
+
+          expect(response.headers['content-type']).toMatch(/json/);
+          expect(response.status).toEqual(200);
+          expect(response.body.result.data).toEqual(ALL_USERS.find((user) => user.id === id));
+        });
+
+        it('POST /createUser', async () => {
+          const response = await request(server)
+            .post('/trpc/createUser')
+            .send({ name: 'eve' })
+            .set('content-type', 'application/json')
+            .set('authorization', 'trustme');
+          const { data: newUser } = response.body.result;
+
+          expect(response.headers['content-type']).toMatch(/json/);
+          expect(response.status).toEqual(200);
+          expect(newUser).toEqual(ALL_USERS.find((user) => user.id === newUser.id));
+        });
+
+        it('POST /createUser: failed auth sets status (using ctx)', async () => {
+          const response = await request(server)
+            .post('/trpc/createUser')
+            .send({ name: 'eve' })
+            .set('content-type', 'application/json');
+
+          expect(response.headers['content-type']).toMatch(/json/);
+          expect(response.status).toEqual(401);
+        });
+      });
+      describe('Bad requests fail as expected', () => {
+        it('GET /some-non-existent-route', async () => {
+          const response = await request(server).get('/some-non-existent-route');
+          const response2 = await request(server).get('/trpc/some-non-existent-route');
+
+          expect(response.status).toEqual(404);
+          expect(response2.status).toEqual(404);
+        });
+      });
     });
   });
 });

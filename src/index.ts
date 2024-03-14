@@ -7,6 +7,23 @@ import {
 import { Middleware } from 'koa';
 import { IncomingMessage, ServerResponse } from 'http';
 
+declare module 'koa' {
+  interface Request {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    body?: any;
+  }
+}
+declare module 'http' {
+  interface IncomingMessage {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    body?: any;
+  }
+  interface ServerResponse {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    body?: any;
+  }
+}
+
 export type CreateTrpcKoaContextOptions = NodeHTTPCreateContextFnOptions<
   IncomingMessage,
   ServerResponse<IncomingMessage>
@@ -26,6 +43,13 @@ export const createKoaMiddleware =
     const { req, res, request } = ctx;
 
     if (prefix && !request.path.startsWith(prefix)) return next();
+
+    // put parsed body (by koa-bodyparser/@koa/bodyparser for example)
+    // where nodeHTTPRequestHandler will look for it.
+    // https://github.com/BlairCurrey/trpc-koa-adapter/issues/24
+    if ('body' in request) {
+      req.body = request.body;
+    }
 
     // koa uses 404 as a default status but some logic in
     // nodeHTTPRequestHandler assumes default status of 200.
