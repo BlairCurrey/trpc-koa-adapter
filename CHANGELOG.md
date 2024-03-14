@@ -1,3 +1,10 @@
+## [1.2.1](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.2.0...v1.2.1) (2024-03-14)
+
+
+### :bug: Fixes
+
+* bodyparser causes trpc request hang ([#26](https://github.com/BlairCurrey/trpc-koa-adapter/issues/26)) ([02e8f71](https://github.com/BlairCurrey/trpc-koa-adapter/commit/02e8f71a0582c7c4b0c423e6f0667160dc906ea0))
+
 ## [1.2.0](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.3...v1.2.0) (2024-03-07)
 
 
