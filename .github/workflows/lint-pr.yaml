@@ -6,7 +6,6 @@ on:
       - opened
       - edited
       - synchronize
-  workflow_dispatch:
 
 permissions:
   pull-requests: read
