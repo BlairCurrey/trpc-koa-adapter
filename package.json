@@ -13,8 +13,12 @@
     "ci-install": "HUSKY=0 pnpm install",
     "build": "rm -rf ./dist && tsc",
     "test": "jest",
+    "prettier": "prettier --write --config --ignore-path .gitignore \"**/*.+(js|ts|json)\"",
     "lint": "eslint --fix --max-warnings=0 src/**/*.ts test/**/*.ts",
-    "format": "prettier --config --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
+    "format": "pnpm prettier && pnpm lint",
+    "check:prettier": "prettier --check --config --ignore-path .gitignore \"**/*.+(js|ts|json)\"",
+    "check:lint": "eslint --max-warnings=0 src/**/*.ts test/**/*.ts",
+    "check:format": "pnpm prettier && pnpm lint",
     "prepare": "husky install",
     "semantic-release": "semantic-release"
   },
