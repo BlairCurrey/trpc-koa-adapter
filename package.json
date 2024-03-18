@@ -30,8 +30,6 @@
   ],
   "packageManager": "pnpm@8.15.4",
   "devDependencies": {
-    "@commitlint/cli": "^17.6.6",
-    "@commitlint/config-conventional": "^17.6.6",
     "@koa/bodyparser": "^5.0.0",
     "@semantic-release/changelog": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
@@ -62,7 +60,6 @@
   },
   "husky": {
     "hooks": {
-      "commit-msg": "commitlint -E HUSKY_GIT_PARAMS",
       "pre-commit": "pnpm lint-staged && pnpm test"
     }
   },
