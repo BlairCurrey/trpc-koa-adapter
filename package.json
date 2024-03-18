@@ -13,7 +13,7 @@
     "ci-install": "HUSKY=0 pnpm install",
     "build": "rm -rf ./dist && tsc",
     "test": "jest",
-    "lint": "eslint --fix \"src/**/*.{js,ts}\"",
+    "lint": "eslint --fix --max-warnings=0 src/**/*.ts test/**/*.ts",
     "format": "prettier --config --ignore-path .gitignore --write \"**/*.+(js|ts|json)\"",
     "prepare": "husky install",
     "semantic-release": "semantic-release"
