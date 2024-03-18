@@ -17,10 +17,10 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
       - uses: pnpm/action-setup@v3
-      - name: Lint
-        run: pnpm check:format
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm check:format
       - name: Build
         run: pnpm build
       - name: Test
