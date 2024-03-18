@@ -15,9 +15,9 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v3
         with:
-          node-version: "18.x"
+          node-version: '18.x'
       - uses: pnpm/action-setup@v2
-      - run: pnpm ci-install
+      - run: pnpm install --frozen-lockfile
       - run: pnpm build
       - run: pnpm test
       - run: npx semantic-release

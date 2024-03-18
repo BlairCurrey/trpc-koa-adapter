@@ -20,7 +20,7 @@ jobs:
       - name: Lint
         run: pnpm check:format
       - name: Install Dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
       - name: Build
         run: pnpm build
       - name: Test
