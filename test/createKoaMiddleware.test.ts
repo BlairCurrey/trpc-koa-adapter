@@ -168,12 +168,7 @@ describe('Integration', () => {
       let server: Server;
 
       beforeEach(async () => (server = app.listen(3098)));
-      afterEach(async () => {
-        if (server?.listening) {
-          await server.closeAllConnections();
-          await server.close();
-        }
-      });
+      afterEach(async () => await server.close());
 
       describe('Can call tRPC server endpoints succesfully', () => {
         it('GET /users', async () => {
