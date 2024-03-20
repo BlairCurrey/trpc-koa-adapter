@@ -1,6 +1,6 @@
 # trpc-koa-adapter
 
-This is an adapter which allows you to mount tRPC onto a Koa server. This is similar to the [trpc/packages/server/src/adapters/express.ts](https://github.com/trpc/trpc/blob/next/packages/server/src/adapters/express.ts) adapter.
+This is an adapter which allows you to mount [tRPC](https://github.com/trpc/trpc) onto a [Koa](https://github.com/koajs/koa) server. This is similar to the [trpc/packages/server/src/adapters/express.ts](https://github.com/trpc/trpc/blob/next/packages/server/src/adapters/express.ts) adapter.
 
 # How to Add tRPC to a Koa Server
 

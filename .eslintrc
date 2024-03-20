@@ -6,9 +6,7 @@
   },
   "plugins": ["@typescript-eslint"],
   "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "prettier"],
-  "rules": {
-
-  },
+  "rules": {},
   "env": {
     "jest": true,
     "node": true,
