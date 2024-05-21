@@ -60,7 +60,7 @@ The middleware takes a configuration object with the following properties:
 
 # More examples
 
-In addition to these examples, see the implementations in [`./test/createKoaMiddleware.test.ts`](https://github.com/BlairCurrey/trpc-koa-adapter/blob/master/test/createKoaMiddleware.test.ts).
+In addition to these examples, see `/example` and the implementations in [`/test/createKoaMiddleware.test.ts`](https://github.com/BlairCurrey/trpc-koa-adapter/blob/master/test/createKoaMiddleware.test.ts).
 
 ## Using the Context:
 
