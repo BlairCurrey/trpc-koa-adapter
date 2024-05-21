@@ -1,3 +1,15 @@
+## [1.2.2](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.2.1...v1.2.2) (2024-05-21)
+
+
+### :memo: Documentation
+
+* add example package to show usage ([#29](https://github.com/BlairCurrey/trpc-koa-adapter/issues/29)) ([62afd3e](https://github.com/BlairCurrey/trpc-koa-adapter/commit/62afd3ef6bfd1c76af1d52045870f4439d9f5c2d))
+
+
+### :repeat: CI
+
+* lint pr title, move lint/format to ci and rm husky ([#27](https://github.com/BlairCurrey/trpc-koa-adapter/issues/27)) ([198cf1b](https://github.com/BlairCurrey/trpc-koa-adapter/commit/198cf1bf479f62336d7c5a06e44cf7cb389f3997))
+
 ## [1.2.1](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.2.0...v1.2.1) (2024-03-14)
 
 
