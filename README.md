@@ -73,7 +73,7 @@ const createContext = async ({ req, res }: CreateTrpcKoaContextOptions) => {
   };
 };
 
-type TrpcContext = inferAsyncReturnType<typeof createContext>;
+type TrpcContext = Awaited<ReturnType<typeof createContext>>;
 
 const trpc = initTRPC.context<TrpcContext>().create();
 

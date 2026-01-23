@@ -2,10 +2,11 @@ import { AnyRouter } from '@trpc/server';
 import {
   NodeHTTPCreateContextFnOptions,
   NodeHTTPHandlerOptions,
+  NodeHTTPRequest,
+  NodeHTTPResponse,
   nodeHTTPRequestHandler,
 } from '@trpc/server/adapters/node-http';
 import { Middleware } from 'koa';
-import { IncomingMessage, ServerResponse } from 'http';
 
 declare module 'koa' {
   interface Request {
@@ -25,14 +26,14 @@ declare module 'http' {
 }
 
 export type CreateTrpcKoaContextOptions = NodeHTTPCreateContextFnOptions<
-  IncomingMessage,
-  ServerResponse<IncomingMessage>
+  NodeHTTPRequest,
+  NodeHTTPResponse
 >;
 export type AdditionalMiddlewareOpts = { prefix?: `/${string}` };
 export type CreateKoaMiddlewareOptions<TRouter extends AnyRouter> = NodeHTTPHandlerOptions<
   TRouter,
-  IncomingMessage,
-  ServerResponse<IncomingMessage>
+  NodeHTTPRequest,
+  NodeHTTPResponse
 > &
   AdditionalMiddlewareOpts;
 

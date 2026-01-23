@@ -8,7 +8,8 @@ jobs:
 
     strategy:
       matrix:
-        node-version: ['16.x', '18.x', '20.x']
+        node-version: ['18.x', '20.x', '22.x']
+        trpc-version: ['10', '11']
 
     steps:
       - uses: actions/checkout@v4
@@ -19,6 +20,8 @@ jobs:
       - uses: pnpm/action-setup@v3
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
+      - name: Install tRPC version ${{ matrix.trpc-version }}
+        run: pnpm add -D @trpc/server@${{ matrix.trpc-version }}
       - name: Lint
         run: pnpm check:format
       - name: Build
