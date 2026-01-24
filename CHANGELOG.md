@@ -1,64 +1,77 @@
-## [1.2.2](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.2.1...v1.2.2) (2024-05-21)
-
-
-### :memo: Documentation
-
-* add example package to show usage ([#29](https://github.com/BlairCurrey/trpc-koa-adapter/issues/29)) ([62afd3e](https://github.com/BlairCurrey/trpc-koa-adapter/commit/62afd3ef6bfd1c76af1d52045870f4439d9f5c2d))
-
-
-### :repeat: CI
-
-* lint pr title, move lint/format to ci and rm husky ([#27](https://github.com/BlairCurrey/trpc-koa-adapter/issues/27)) ([198cf1b](https://github.com/BlairCurrey/trpc-koa-adapter/commit/198cf1bf479f62336d7c5a06e44cf7cb389f3997))
-
-## [1.2.1](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.2.0...v1.2.1) (2024-03-14)
-
-
-### :bug: Fixes
-
-* bodyparser causes trpc request hang ([#26](https://github.com/BlairCurrey/trpc-koa-adapter/issues/26)) ([02e8f71](https://github.com/BlairCurrey/trpc-koa-adapter/commit/02e8f71a0582c7c4b0c423e6f0667160dc906ea0))
-
-## [1.2.0](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.3...v1.2.0) (2024-03-07)
-
+## [1.3.0](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.2.2...v1.3.0) (2026-01-23)
 
 ### :sparkles: Features
 
-* enable all trpc options ([#23](https://github.com/BlairCurrey/trpc-koa-adapter/issues/23)) ([6bb0a16](https://github.com/BlairCurrey/trpc-koa-adapter/commit/6bb0a1688460cb50081a53d1775c1dfcc5330503))
-
+- add tRPC v11 support ([#31](https://github.com/BlairCurrey/trpc-koa-adapter/issues/31)) ([7ce61f7](https://github.com/BlairCurrey/trpc-koa-adapter/commit/XXXXXXX))
+  - Update peer dependency to accept both ^10.0.0-rc.4 and ^11.0.0
+  - Update type definitions to use NodeHTTPRequest/NodeHTTPResponse from v11
+  - Replace deprecated inferAsyncReturnType with Awaited<ReturnType<>>
+  - Update TypeScript to 5.7.2 (required by tRPC v11)
+  - Remove unused ServerResponse.body module declaration
 
 ### :repeat: CI
 
-* change ci name and trigger to all push ([#25](https://github.com/BlairCurrey/trpc-koa-adapter/issues/25)) ([4ee978c](https://github.com/BlairCurrey/trpc-koa-adapter/commit/4ee978c1f4efe92c300962ce7a7574e628cd094a))
+- test against both tRPC v10 and v11 ([7ce61f7](https://github.com/BlairCurrey/trpc-koa-adapter/commit/XXXXXXX))
+  - Add CI matrix to test against tRPC v10 and v11
+  - Update Node version matrix to 20.x, 22.x, and 24.x
+  - Add ci-success job for simplified branch protection
 
-## [1.1.3](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.2...v1.1.3) (2023-07-03)
+### :white_check_mark: Tests
 
+- fix test mocking for tRPC v11 frozen exports ([7ce61f7](https://github.com/BlairCurrey/trpc-koa-adapter/commit/XXXXXXX))
+  - Replace jest.spyOn with jest.mock for compatibility with v11
 
-### :bug: Fixes
-
-* update deps ([#22](https://github.com/BlairCurrey/trpc-koa-adapter/issues/22)) ([fccb3d6](https://github.com/BlairCurrey/trpc-koa-adapter/commit/fccb3d653c1a5841ec0a43b51029653f84379965))
-
+## [1.2.2](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.2.1...v1.2.2) (2024-05-21)
 
 ### :memo: Documentation
 
-* add development info ([3d708b0](https://github.com/BlairCurrey/trpc-koa-adapter/commit/3d708b0c5ea10d744c953f19c684993e56711a2a))
-
-## [1.1.2](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.1...v1.1.2) (2022-12-28)
-
-
-### :bug: Fixes
-
-* context type ([#13](https://github.com/BlairCurrey/trpc-koa-adapter/issues/13)) ([9932521](https://github.com/BlairCurrey/trpc-koa-adapter/commit/9932521bc081cba42c41e0181ce110a7d13dd9d4))
-
-## [1.1.1](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.0...v1.1.1) (2022-12-28)
-
-
-### :bug: Fixes
-
-* semantic release configuration ([#15](https://github.com/BlairCurrey/trpc-koa-adapter/issues/15)) ([6c122b3](https://github.com/BlairCurrey/trpc-koa-adapter/commit/6c122b34a08e94d74cfd54397c6d14db7a9ba2b4))
-
+- add example package to show usage ([#29](https://github.com/BlairCurrey/trpc-koa-adapter/issues/29)) ([62afd3e](https://github.com/BlairCurrey/trpc-koa-adapter/commit/62afd3ef6bfd1c76af1d52045870f4439d9f5c2d))
 
 ### :repeat: CI
 
-* add access token ([#19](https://github.com/BlairCurrey/trpc-koa-adapter/issues/19)) ([6cdc872](https://github.com/BlairCurrey/trpc-koa-adapter/commit/6cdc872d86a2789dbeeb068c857b6b86ee29c8ca))
-* fix husky err semantic release ([#16](https://github.com/BlairCurrey/trpc-koa-adapter/issues/16)) ([2638f1b](https://github.com/BlairCurrey/trpc-koa-adapter/commit/2638f1b32de7f5bf367aa7d935b7bfbee1621a80))
-* maybe bypass protected ([#17](https://github.com/BlairCurrey/trpc-koa-adapter/issues/17)) ([34e0da6](https://github.com/BlairCurrey/trpc-koa-adapter/commit/34e0da61645d79cbba4c3b03503ceed8d40b5738))
-* maybe bypass protected branch ([#18](https://github.com/BlairCurrey/trpc-koa-adapter/issues/18)) ([5b0bf9c](https://github.com/BlairCurrey/trpc-koa-adapter/commit/5b0bf9c95dd5c6eb6e5282dd24b7fde935af4a7f))
+- lint pr title, move lint/format to ci and rm husky ([#27](https://github.com/BlairCurrey/trpc-koa-adapter/issues/27)) ([198cf1b](https://github.com/BlairCurrey/trpc-koa-adapter/commit/198cf1bf479f62336d7c5a06e44cf7cb389f3997))
+
+## [1.2.1](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.2.0...v1.2.1) (2024-03-14)
+
+### :bug: Fixes
+
+- bodyparser causes trpc request hang ([#26](https://github.com/BlairCurrey/trpc-koa-adapter/issues/26)) ([02e8f71](https://github.com/BlairCurrey/trpc-koa-adapter/commit/02e8f71a0582c7c4b0c423e6f0667160dc906ea0))
+
+## [1.2.0](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.3...v1.2.0) (2024-03-07)
+
+### :sparkles: Features
+
+- enable all trpc options ([#23](https://github.com/BlairCurrey/trpc-koa-adapter/issues/23)) ([6bb0a16](https://github.com/BlairCurrey/trpc-koa-adapter/commit/6bb0a1688460cb50081a53d1775c1dfcc5330503))
+
+### :repeat: CI
+
+- change ci name and trigger to all push ([#25](https://github.com/BlairCurrey/trpc-koa-adapter/issues/25)) ([4ee978c](https://github.com/BlairCurrey/trpc-koa-adapter/commit/4ee978c1f4efe92c300962ce7a7574e628cd094a))
+
+## [1.1.3](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.2...v1.1.3) (2023-07-03)
+
+### :bug: Fixes
+
+- update deps ([#22](https://github.com/BlairCurrey/trpc-koa-adapter/issues/22)) ([fccb3d6](https://github.com/BlairCurrey/trpc-koa-adapter/commit/fccb3d653c1a5841ec0a43b51029653f84379965))
+
+### :memo: Documentation
+
+- add development info ([3d708b0](https://github.com/BlairCurrey/trpc-koa-adapter/commit/3d708b0c5ea10d744c953f19c684993e56711a2a))
+
+## [1.1.2](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.1...v1.1.2) (2022-12-28)
+
+### :bug: Fixes
+
+- context type ([#13](https://github.com/BlairCurrey/trpc-koa-adapter/issues/13)) ([9932521](https://github.com/BlairCurrey/trpc-koa-adapter/commit/9932521bc081cba42c41e0181ce110a7d13dd9d4))
+
+## [1.1.1](https://github.com/BlairCurrey/trpc-koa-adapter/compare/v1.1.0...v1.1.1) (2022-12-28)
+
+### :bug: Fixes
+
+- semantic release configuration ([#15](https://github.com/BlairCurrey/trpc-koa-adapter/issues/15)) ([6c122b3](https://github.com/BlairCurrey/trpc-koa-adapter/commit/6c122b34a08e94d74cfd54397c6d14db7a9ba2b4))
+
+### :repeat: CI
+
+- add access token ([#19](https://github.com/BlairCurrey/trpc-koa-adapter/issues/19)) ([6cdc872](https://github.com/BlairCurrey/trpc-koa-adapter/commit/6cdc872d86a2789dbeeb068c857b6b86ee29c8ca))
+- fix husky err semantic release ([#16](https://github.com/BlairCurrey/trpc-koa-adapter/issues/16)) ([2638f1b](https://github.com/BlairCurrey/trpc-koa-adapter/commit/2638f1b32de7f5bf367aa7d935b7bfbee1621a80))
+- maybe bypass protected ([#17](https://github.com/BlairCurrey/trpc-koa-adapter/issues/17)) ([34e0da6](https://github.com/BlairCurrey/trpc-koa-adapter/commit/34e0da61645d79cbba4c3b03503ceed8d40b5738))
+- maybe bypass protected branch ([#18](https://github.com/BlairCurrey/trpc-koa-adapter/issues/18)) ([5b0bf9c](https://github.com/BlairCurrey/trpc-koa-adapter/commit/5b0bf9c95dd5c6eb6e5282dd24b7fde935af4a7f))
