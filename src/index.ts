@@ -19,10 +19,6 @@ declare module 'http' {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     body?: any;
   }
-  interface ServerResponse {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
-    body?: any;
-  }
 }
 
 export type CreateTrpcKoaContextOptions = NodeHTTPCreateContextFnOptions<
