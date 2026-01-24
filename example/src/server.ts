@@ -1,4 +1,4 @@
-import { inferAsyncReturnType, initTRPC, TRPCError } from '@trpc/server';
+import { initTRPC, TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import Koa from 'koa';
 import { CreateTrpcKoaContextOptions } from 'trpc-koa-adapter';
@@ -32,7 +32,7 @@ const createContext = ({ req, res }: CreateTrpcKoaContextOptions) => ({
   res,
   isAuthed: () => req.headers.authorization === 'trustme',
 });
-type Context = inferAsyncReturnType<typeof createContext>;
+type Context = Awaited<ReturnType<typeof createContext>>;
 
 const t = initTRPC.context<Context>().create();
 

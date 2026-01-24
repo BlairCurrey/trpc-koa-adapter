@@ -1,25 +1,33 @@
 import Koa, { Context } from 'koa';
 import { createKoaMiddleware, CreateTrpcKoaContextOptions } from '../src';
 import request from 'supertest';
-import { inferAsyncReturnType, initTRPC } from '@trpc/server';
-import * as nodeHTTPAdapter from '@trpc/server/adapters/node-http';
+import { initTRPC } from '@trpc/server';
+import { nodeHTTPRequestHandler } from '@trpc/server/adapters/node-http';
 import { Server } from 'http';
 import koaBodyParserOld from 'koa-bodyparser';
 import koaBodyParser from '@koa/bodyparser';
 
+// Store real implementation before mocking
+const realNodeHTTPRequestHandler =
+  jest.requireActual<typeof import('@trpc/server/adapters/node-http')>(
+    '@trpc/server/adapters/node-http'
+  ).nodeHTTPRequestHandler;
+
+// Mock the module - required for tRPC v11 which has frozen exports
+jest.mock('@trpc/server/adapters/node-http', () => ({
+  ...jest.requireActual('@trpc/server/adapters/node-http'),
+  nodeHTTPRequestHandler: jest.fn(),
+}));
+
+// Get a reference to the mocked function
+const mockNodeHTTPRequestHandler = nodeHTTPRequestHandler as jest.Mock;
+
 describe('Unit', () => {
   const router = initTRPC.create().router({});
   const next = jest.fn();
-  let spyNodeHTTPRequestHandler: jest.SpyInstance;
 
-  beforeEach(async () => {
-    spyNodeHTTPRequestHandler = jest
-      .spyOn(nodeHTTPAdapter, 'nodeHTTPRequestHandler')
-      .mockImplementationOnce(jest.fn());
-  });
-
-  afterEach(async () => {
-    jest.restoreAllMocks();
+  beforeEach(() => {
+    mockNodeHTTPRequestHandler.mockReset();
   });
 
   it('should return a function accepting 2 arguments', () => {
@@ -46,7 +54,7 @@ describe('Unit', () => {
     adapter(ctx, next);
 
     expect(next).not.toHaveBeenCalled();
-    expect(spyNodeHTTPRequestHandler).toHaveBeenCalled();
+    expect(mockNodeHTTPRequestHandler).toHaveBeenCalled();
   });
   it('createKoaMiddleware should call nodeHTTPRequestHandler if no prefix set', () => {
     const adapter = createKoaMiddleware({ router });
@@ -62,7 +70,7 @@ describe('Unit', () => {
     adapter(ctx, next);
 
     expect(next).not.toHaveBeenCalled();
-    expect(spyNodeHTTPRequestHandler).toHaveBeenCalled();
+    expect(mockNodeHTTPRequestHandler).toHaveBeenCalled();
   });
   it('createKoaMiddleware should call next and not process request if prefix set and request doesnt have prefix', () => {
     const adapter = createKoaMiddleware({ router, prefix: '/trpc' });
@@ -76,7 +84,7 @@ describe('Unit', () => {
     adapter(ctx, next);
 
     expect(next).toHaveBeenCalled();
-    expect(spyNodeHTTPRequestHandler).not.toHaveBeenCalled();
+    expect(mockNodeHTTPRequestHandler).not.toHaveBeenCalled();
   });
   it('createKoaMiddleware should call nodeHTTPRequestHandler with req.body if parsed body found on request.body', () => {
     const adapter = createKoaMiddleware({ router });
@@ -89,13 +97,18 @@ describe('Unit', () => {
     adapter(ctx, next);
 
     expect(next).not.toHaveBeenCalled();
-    expect(spyNodeHTTPRequestHandler).toBeCalledWith(
+    expect(mockNodeHTTPRequestHandler).toBeCalledWith(
       expect.objectContaining({ req: { body: ctx.request.body } })
     );
   });
 });
 
 describe('Integration', () => {
+  // Restore real implementation for integration tests
+  beforeAll(() => {
+    mockNodeHTTPRequestHandler.mockImplementation(realNodeHTTPRequestHandler);
+  });
+
   const ALL_USERS = [
     { id: 1, name: 'bob' },
     { id: 2, name: 'alice' },
@@ -109,7 +122,7 @@ describe('Integration', () => {
     };
   };
 
-  type TrpcContext = inferAsyncReturnType<typeof createContext>;
+  type TrpcContext = Awaited<ReturnType<typeof createContext>>;
 
   const trpc = initTRPC.context<TrpcContext>().create();
   const trpcRouter = trpc.router({
