@@ -103,6 +103,9 @@ const adapter = createKoaMiddleware({
 
 The Koa context is available in `createContext` via `req.koaCtx`:
 
+> [!NOTE]
+> While these examples show state access, `req.koaCtx` provides the full Koa context including session, cookies, and any custom properties added by your middleware.
+
 ```ts
 // Auth middleware sets user data
 app.use(async (ctx, next) => {
@@ -121,7 +124,7 @@ const createContext = ({ req, res }: CreateTrpcKoaContextOptions) => ({
 
 ### Type Safety
 
-Declare your state interface for type safety:
+By default, `req.koaCtx?.state` properties are typed as `any`. For stricter type safety, declare your state interface:
 
 ```ts
 declare module 'koa' {

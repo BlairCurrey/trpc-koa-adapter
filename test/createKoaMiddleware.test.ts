@@ -7,6 +7,14 @@ import { Server } from 'http';
 import koaBodyParserOld from 'koa-bodyparser';
 import koaBodyParser from '@koa/bodyparser';
 
+// Augment Koa types for type-safe state access in tests
+declare module 'koa' {
+  interface DefaultState {
+    userId?: number;
+    userName?: string;
+  }
+}
+
 // Store real implementation before mocking
 const realNodeHTTPRequestHandler = jest.requireActual<
   typeof import('@trpc/server/adapters/node-http')
@@ -108,7 +116,7 @@ describe('Unit', () => {
       request: { path: '/users' },
       req: {},
       res: {},
-      state: { userId: '123' },
+      state: { userId: 123 },
     } as Context;
 
     adapter(ctx, next);
@@ -272,6 +280,8 @@ describe('Integration', () => {
     });
 
     const createContextWithState = ({ req }: CreateTrpcKoaContextOptions) => ({
+      // TypeScript knows userId is number | undefined and userName is string | undefined
+      // due to the module augmentation above
       userId: req.koaCtx?.state.userId,
       userName: req.koaCtx?.state.userName,
     });
