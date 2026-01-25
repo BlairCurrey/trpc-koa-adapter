@@ -30,7 +30,8 @@ const USERS = new UserStore();
 const createContext = ({ req, res }: CreateTrpcKoaContextOptions) => ({
   req,
   res,
-  isAuthed: () => req.headers.authorization === 'trustme',
+  user: req.koaCtx?.state.authenticatedUser,
+  isAuthed: () => !!req.koaCtx?.state.authenticatedUser,
 });
 type Context = Awaited<ReturnType<typeof createContext>>;
 
@@ -59,6 +60,14 @@ export const appRouter = t.router({
 export type AppRouter = typeof appRouter;
 
 const app = new Koa();
+
+// Simulate auth middleware that sets user data
+app.use(async (ctx, next) => {
+  if (ctx.headers.authorization === 'trustme') {
+    ctx.state.authenticatedUser = { id: 1, name: 'Alice' };
+  }
+  await next();
+});
 
 app.use(bodyParser());
 app.use(

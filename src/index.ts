@@ -18,6 +18,14 @@ declare module 'http' {
   interface IncomingMessage {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     body?: any;
+    koaCtx?: import('koa').Context;
+  }
+}
+declare module 'http2' {
+  interface Http2ServerRequest {
+    /* eslint-disable @typescript-eslint/no-explicit-any */
+    body?: any;
+    koaCtx?: import('koa').Context;
   }
 }
 
@@ -47,6 +55,8 @@ export const createKoaMiddleware =
     if ('body' in request) {
       req.body = request.body;
     }
+
+    req.koaCtx = ctx;
 
     // koa uses 404 as a default status but some logic in
     // nodeHTTPRequestHandler assumes default status of 200.

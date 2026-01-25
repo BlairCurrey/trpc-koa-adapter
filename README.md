@@ -99,6 +99,38 @@ const adapter = createKoaMiddleware({
 });
 ```
 
+## Accessing Koa Context:
+
+The Koa context is available in `createContext` via `req.koaCtx`:
+
+```ts
+// Auth middleware sets user data
+app.use(async (ctx, next) => {
+  const user = await authenticateRequest(ctx.headers.authorization);
+  ctx.state.user = user;
+  await next();
+});
+
+// Access in createContext
+const createContext = ({ req, res }: CreateTrpcKoaContextOptions) => ({
+  req,
+  res,
+  user: req.koaCtx?.state.user,
+});
+```
+
+### Type Safety
+
+Declare your state interface for type safety:
+
+```ts
+declare module 'koa' {
+  interface DefaultState {
+    user?: { id: string; name: string };
+  }
+}
+```
+
 # Note About Using With a Body Parser:
 
 Using a bodyparser such as [`@koa/bodyparser`](https://github.com/koajs/bodyparser), [`koa-bodyparser`](https://www.npmjs.com/package/koa-bodyparser), or otherwise parsing the body will consume the data stream on the incoming request. To ensure that tRPC can handle the request, this library looks for the parsed body on `ctx.request.body`, which is where `@koa/bodyparser` and `koa-bodyparser` store the parsed body. If for some reason the parsed body is being stored somewhere else, and you need to parse the body before this middleware, the body will not be available to tRPC and mutations will fail as detailed [in this github issue](https://github.com/BlairCurrey/trpc-koa-adapter/issues/24).

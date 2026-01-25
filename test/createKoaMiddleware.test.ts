@@ -8,10 +8,9 @@ import koaBodyParserOld from 'koa-bodyparser';
 import koaBodyParser from '@koa/bodyparser';
 
 // Store real implementation before mocking
-const realNodeHTTPRequestHandler =
-  jest.requireActual<typeof import('@trpc/server/adapters/node-http')>(
-    '@trpc/server/adapters/node-http'
-  ).nodeHTTPRequestHandler;
+const realNodeHTTPRequestHandler = jest.requireActual<
+  typeof import('@trpc/server/adapters/node-http')
+>('@trpc/server/adapters/node-http').nodeHTTPRequestHandler;
 
 // Mock the module - required for tRPC v11 which has frozen exports
 jest.mock('@trpc/server/adapters/node-http', () => ({
@@ -98,7 +97,26 @@ describe('Unit', () => {
 
     expect(next).not.toHaveBeenCalled();
     expect(mockNodeHTTPRequestHandler).toBeCalledWith(
-      expect.objectContaining({ req: { body: ctx.request.body } })
+      expect.objectContaining({
+        req: expect.objectContaining({ body: ctx.request.body }),
+      })
+    );
+  });
+  it('should attach Koa context to req.koaCtx', () => {
+    const adapter = createKoaMiddleware({ router });
+    const ctx = {
+      request: { path: '/users' },
+      req: {},
+      res: {},
+      state: { userId: '123' },
+    } as Context;
+
+    adapter(ctx, next);
+
+    expect(mockNodeHTTPRequestHandler).toHaveBeenCalledWith(
+      expect.objectContaining({
+        req: expect.objectContaining({ koaCtx: ctx }),
+      })
     );
   });
 });
@@ -237,6 +255,72 @@ describe('Integration', () => {
           expect(response.status).toEqual(404);
           expect(response2.status).toEqual(404);
         });
+      });
+    });
+  });
+
+  describe('Koa Context Access', () => {
+    const app = new Koa();
+
+    // Middleware sets state
+    app.use(async (ctx, next) => {
+      if (ctx.request.headers.authorization === 'trustme') {
+        ctx.state.userId = 123;
+        ctx.state.userName = 'Alice';
+      }
+      await next();
+    });
+
+    const createContextWithState = ({ req }: CreateTrpcKoaContextOptions) => ({
+      userId: req.koaCtx?.state.userId,
+      userName: req.koaCtx?.state.userName,
+    });
+
+    type TrpcContextWithState = Awaited<ReturnType<typeof createContextWithState>>;
+
+    const trpcWithState = initTRPC.context<TrpcContextWithState>().create();
+    const trpcRouterWithState = trpcWithState.router({
+      me: trpcWithState.procedure.query(({ ctx }) => ({
+        userId: ctx.userId,
+        userName: ctx.userName,
+      })),
+    });
+
+    app.use(
+      createKoaMiddleware({
+        router: trpcRouterWithState,
+        createContext: createContextWithState,
+        prefix: '/trpc',
+      })
+    );
+
+    let server: Server;
+
+    beforeEach(async () => (server = app.listen(3099)));
+    afterEach(async () => await server.close());
+
+    it('should access ctx.state in createContext', async () => {
+      const response = await request(server)
+        .get('/trpc/me')
+        .set('authorization', 'trustme')
+        .set('content-type', 'application/json');
+
+      expect(response.status).toEqual(200);
+      expect(response.body.result.data).toEqual({
+        userId: 123,
+        userName: 'Alice',
+      });
+    });
+
+    it('should handle missing auth (no state)', async () => {
+      const response = await request(server)
+        .get('/trpc/me')
+        .set('content-type', 'application/json');
+
+      expect(response.status).toEqual(200);
+      expect(response.body.result.data).toEqual({
+        userId: undefined,
+        userName: undefined,
       });
     });
   });
