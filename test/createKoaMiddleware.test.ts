@@ -104,10 +104,10 @@ describe('Unit', () => {
     adapter(ctx, next);
 
     expect(next).not.toHaveBeenCalled();
-    expect(mockNodeHTTPRequestHandler).toBeCalledWith(
+    expect(mockNodeHTTPRequestHandler).toHaveBeenCalledWith(
       expect.objectContaining({
         req: expect.objectContaining({ body: ctx.request.body }),
-      })
+      }),
     );
   });
   it('should attach Koa context to req.koaCtx', () => {
@@ -124,7 +124,7 @@ describe('Unit', () => {
     expect(mockNodeHTTPRequestHandler).toHaveBeenCalledWith(
       expect.objectContaining({
         req: expect.objectContaining({ koaCtx: ctx }),
-      })
+      }),
     );
   });
 });
@@ -301,7 +301,7 @@ describe('Integration', () => {
         router: trpcRouterWithState,
         createContext: createContextWithState,
         prefix: '/trpc',
-      })
+      }),
     );
 
     let server: Server;
@@ -332,6 +332,64 @@ describe('Integration', () => {
         userId: undefined,
         userName: undefined,
       });
+    });
+  });
+
+  // Reading and writing cookies requires the Koa context, which exposes
+  // koa's cookie handling. https://github.com/BlairCurrey/trpc-koa-adapter/issues/21
+  describe('Koa Cookies', () => {
+    const app = new Koa();
+
+    const createCookieContext = ({ req }: CreateTrpcKoaContextOptions) => ({
+      koaCtx: req.koaCtx,
+    });
+
+    type TrpcCookieContext = Awaited<ReturnType<typeof createCookieContext>>;
+
+    const trpcCookies = initTRPC.context<TrpcCookieContext>().create();
+    const trpcCookieRouter = trpcCookies.router({
+      login: trpcCookies.procedure.mutation(({ ctx }) => {
+        ctx.koaCtx?.cookies.set('session', 'abc123', { httpOnly: true });
+        return { loggedIn: true };
+      }),
+      whoami: trpcCookies.procedure.query(({ ctx }) => ({
+        session: ctx.koaCtx?.cookies.get('session') ?? null,
+      })),
+    });
+
+    app.use(
+      createKoaMiddleware({
+        router: trpcCookieRouter,
+        createContext: createCookieContext,
+        prefix: '/trpc',
+      }),
+    );
+
+    let server: Server;
+
+    beforeEach(async () => (server = app.listen(3100)));
+    afterEach(async () => await server.close());
+
+    it('should set a response cookie from a procedure', async () => {
+      const response = await request(server)
+        .post('/trpc/login')
+        .set('content-type', 'application/json');
+
+      expect(response.status).toEqual(200);
+      expect(response.body.result.data).toEqual({ loggedIn: true });
+      expect(response.headers['set-cookie']).toEqual(
+        expect.arrayContaining([expect.stringContaining('session=abc123')]),
+      );
+    });
+
+    it('should read a request cookie from a procedure', async () => {
+      const response = await request(server)
+        .get('/trpc/whoami')
+        .set('content-type', 'application/json')
+        .set('cookie', 'session=abc123');
+
+      expect(response.status).toEqual(200);
+      expect(response.body.result.data).toEqual({ session: 'abc123' });
     });
   });
 });
