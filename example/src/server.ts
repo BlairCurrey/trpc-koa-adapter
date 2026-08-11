@@ -17,7 +17,7 @@ class UserStore {
     this.users.push({ id: this.nextId(), name });
     return this.getLast();
   }
-  findById(id: Number) {
+  findById(id: number) {
     return this.users.find((user) => user.id === id);
   }
   getLast() {
@@ -47,9 +47,7 @@ export const appRouter = t.router({
     .mutation(({ input, ctx }) => {
       // ctx should be fully typed here
       if (!ctx.isAuthed()) {
-        console.error('unauthorized');
-        new TRPCError({ code: 'UNAUTHORIZED', message: 'Unauthorized' });
-        return;
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Unauthorized' });
       }
       ctx.res.statusCode = 201;
       console.log('created');
@@ -75,7 +73,7 @@ app.use(
     router: appRouter,
     createContext,
     prefix: '/trpc',
-  })
+  }),
 );
 
 const port = 3098;

@@ -1,27 +1,31 @@
 {
   "name": "example",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "description": "Runnable example of mounting tRPC on a Koa server",
   "scripts": {
-    "client:start": "ts-node src/client.ts",
-    "server:start": "ts-node src/server.ts"
+    "client:start": "tsx src/client.ts",
+    "server:start": "tsx src/server.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  },
   "dependencies": {
-    "@koa/bodyparser": "^5.0.0",
-    "@trpc/client": "^10.45.2",
-    "@trpc/server": "^ 10.45.2",
-    "koa": "^2.13.4",
-    "koa-bodyparser": "^4.4.1",
-    "trpc-koa-adapter": "1.2.1",
-    "zod": "^3.19.1"
+    "@koa/bodyparser": "^6.1.0",
+    "@trpc/client": "^11.18.0",
+    "@trpc/server": "^11.18.0",
+    "koa": "^3.2.1",
+    "trpc-koa-adapter": "link:..",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/koa": "^2.13.5",
-    "@types/koa-bodyparser": "^4.3.12",
-    "ts-node": "^10.9.2"
+    "@types/koa": "^3.0.3",
+    "@types/node": "^26.2.0",
+    "tsx": "^4.23.12"
   }
 }
