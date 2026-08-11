@@ -1,6 +1,20 @@
 # trpc-koa-adapter
 
+[![npm version](https://img.shields.io/npm/v/trpc-koa-adapter.svg)](https://www.npmjs.com/package/trpc-koa-adapter)
+[![CI](https://github.com/BlairCurrey/trpc-koa-adapter/actions/workflows/ci.yaml/badge.svg)](https://github.com/BlairCurrey/trpc-koa-adapter/actions/workflows/ci.yaml)
+[![license](https://img.shields.io/npm/l/trpc-koa-adapter.svg)](https://github.com/BlairCurrey/trpc-koa-adapter/blob/master/LICENSE)
+
 This is an adapter which allows you to mount [tRPC](https://github.com/trpc/trpc) onto a [Koa](https://github.com/koajs/koa) server. This is similar to the [trpc/packages/server/src/adapters/express.ts](https://github.com/trpc/trpc/blob/next/packages/server/src/adapters/express.ts) adapter.
+
+## Compatibility
+
+Every combination below is covered by CI:
+
+| Dependency | Supported versions |
+| ---------- | ------------------ |
+| Koa        | 2 and 3            |
+| tRPC       | 10 and 11          |
+| Node       | 22, 24, and 26     |
 
 # How to Add tRPC to a Koa Server
 
@@ -122,6 +136,26 @@ const createContext = ({ req, res }: CreateTrpcKoaContextOptions) => ({
 });
 ```
 
+### Reading and Setting Cookies
+
+Cookies are handled through the Koa context, so pass it along in `createContext` to read and write cookies from your procedures ([discussion](https://github.com/BlairCurrey/trpc-koa-adapter/issues/21)):
+
+```ts
+const createContext = ({ req }: CreateTrpcKoaContextOptions) => ({
+  koaCtx: req.koaCtx,
+});
+
+const trpcRouter = trpc.router({
+  login: trpc.procedure.mutation(({ ctx }) => {
+    ctx.koaCtx?.cookies.set('session', 'abc123', { httpOnly: true });
+    return { loggedIn: true };
+  }),
+  whoami: trpc.procedure.query(({ ctx }) => ({
+    session: ctx.koaCtx?.cookies.get('session') ?? null,
+  })),
+});
+```
+
 ### Type Safety
 
 By default, `req.koaCtx?.state` properties are typed as `any`. For stricter type safety, declare your state interface:
@@ -149,3 +183,14 @@ To get started clone the repo, install packages, build, and ensure tests pass:
     pnpm i
     pnpm build
     pnpm test
+
+Before pushing, verify formatting and lint the same way CI does:
+
+    pnpm check:format
+
+To apply formatting and auto-fixable lint rules instead:
+
+    pnpm format
+
+The `/example` directory contains a runnable client and server wired up to the
+local build. See [`example/README.md`](./example/README.md).
