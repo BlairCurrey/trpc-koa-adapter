@@ -3,27 +3,53 @@ name: Build and Test
 on: [push]
 
 jobs:
-  build-and-test:
+  # Formatting, linting and the type-check only need to run once - they don't
+  # vary by node/koa/trpc version.
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - name: Use Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24.x'
+          cache: pnpm
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check formatting and lint
+        run: pnpm check:format
+      - name: Build
+        run: pnpm build
+
+  test:
     runs-on: ubuntu-latest
 
     strategy:
+      # Report every failing combination, not just the first.
+      fail-fast: false
       matrix:
-        node-version: ['20.x', '22.x', '24.x']
+        node-version: ['22.x', '24.x', '26.x']
         trpc-version: ['10', '11']
+        koa-version: ['2', '3']
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
       - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: ${{ matrix.node-version }}
-      - uses: pnpm/action-setup@v3
+          cache: pnpm
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
-      - name: Install tRPC version ${{ matrix.trpc-version }}
-        run: pnpm add -D @trpc/server@${{ matrix.trpc-version }}
-      - name: Lint
-        run: pnpm check:format
+      - name: Install tRPC ${{ matrix.trpc-version }} and Koa ${{ matrix.koa-version }}
+        run: >
+          pnpm add -D
+          @trpc/server@${{ matrix.trpc-version }}
+          koa@${{ matrix.koa-version }}
+          @types/koa@${{ matrix.koa-version }}
       - name: Build
         run: pnpm build
       - name: Test
@@ -32,11 +58,11 @@ jobs:
   # Single status check for branch protection
   ci-success:
     runs-on: ubuntu-latest
-    needs: build-and-test
+    needs: [lint, test]
     if: always()
     steps:
-      - name: Check build matrix status
-        if: needs.build-and-test.result != 'success'
+      - name: Check job status
+        if: needs.lint.result != 'success' || needs.test.result != 'success'
         run: exit 1
       - name: All checks passed
         run: echo "All CI checks passed!"
