@@ -115,10 +115,10 @@ const adapter = createKoaMiddleware({
 
 ## Accessing Koa Context:
 
-The Koa context is available in `createContext` via `req.koaCtx`:
+`createContext` receives `koaCtx` alongside `req` and `res`:
 
 > [!NOTE]
-> While these examples show state access, `req.koaCtx` provides the full Koa context including session, cookies, and any custom properties added by your middleware.
+> While these examples show state access, `koaCtx` is the full Koa context, including session, cookies, and any custom properties added by your middleware.
 
 ```ts
 // Auth middleware sets user data
@@ -129,10 +129,10 @@ app.use(async (ctx, next) => {
 });
 
 // Access in createContext
-const createContext = ({ req, res }: CreateTrpcKoaContextOptions) => ({
+const createContext = ({ req, res, koaCtx }: CreateTrpcKoaContextOptions) => ({
   req,
   res,
-  user: req.koaCtx?.state.user,
+  user: koaCtx.state.user,
 });
 ```
 
@@ -141,24 +141,22 @@ const createContext = ({ req, res }: CreateTrpcKoaContextOptions) => ({
 Cookies are handled through the Koa context, so pass it along in `createContext` to read and write cookies from your procedures ([discussion](https://github.com/BlairCurrey/trpc-koa-adapter/issues/21)):
 
 ```ts
-const createContext = ({ req }: CreateTrpcKoaContextOptions) => ({
-  koaCtx: req.koaCtx,
-});
+const createContext = ({ koaCtx }: CreateTrpcKoaContextOptions) => ({ koaCtx });
 
 const trpcRouter = trpc.router({
   login: trpc.procedure.mutation(({ ctx }) => {
-    ctx.koaCtx?.cookies.set('session', 'abc123', { httpOnly: true });
+    ctx.koaCtx.cookies.set('session', 'abc123', { httpOnly: true });
     return { loggedIn: true };
   }),
   whoami: trpc.procedure.query(({ ctx }) => ({
-    session: ctx.koaCtx?.cookies.get('session') ?? null,
+    session: ctx.koaCtx.cookies.get('session') ?? null,
   })),
 });
 ```
 
 ### Type Safety
 
-By default, `req.koaCtx?.state` properties are typed as `any`. For stricter type safety, declare your state interface:
+By default, `koaCtx.state` properties are typed as `any`. For stricter type safety, declare your state interface:
 
 ```ts
 declare module 'koa' {

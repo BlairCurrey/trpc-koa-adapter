@@ -27,11 +27,11 @@ class UserStore {
 
 const USERS = new UserStore();
 
-const createContext = ({ req, res }: CreateTrpcKoaContextOptions) => ({
+const createContext = ({ req, res, koaCtx }: CreateTrpcKoaContextOptions) => ({
   req,
   res,
-  user: req.koaCtx?.state.authenticatedUser,
-  isAuthed: () => !!req.koaCtx?.state.authenticatedUser,
+  user: koaCtx.state.authenticatedUser,
+  isAuthed: () => !!koaCtx.state.authenticatedUser,
 });
 type Context = Awaited<ReturnType<typeof createContext>>;
 

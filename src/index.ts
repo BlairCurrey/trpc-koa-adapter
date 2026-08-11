@@ -1,4 +1,4 @@
-import { AnyRouter } from '@trpc/server';
+import { AnyRouter, inferRouterContext } from '@trpc/server';
 import {
   NodeHTTPCreateContextFnOptions,
   NodeHTTPHandlerOptions,
@@ -6,7 +6,7 @@ import {
   NodeHTTPResponse,
   nodeHTTPRequestHandler,
 } from '@trpc/server/adapters/node-http';
-import { Middleware } from 'koa';
+import { Context, Middleware } from 'koa';
 
 declare module 'koa' {
   interface Request {
@@ -18,33 +18,60 @@ declare module 'http' {
   interface IncomingMessage {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     body?: any;
-    koaCtx?: import('koa').Context;
   }
 }
 declare module 'http2' {
   interface Http2ServerRequest {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     body?: any;
-    koaCtx?: import('koa').Context;
   }
 }
 
+/**
+ * Options handed to `createContext`. Alongside tRPC's own `req`/`res`, this
+ * includes `koaCtx` - the koa context for the request, which is where koa keeps
+ * state, cookies, session and anything your other middleware attached.
+ */
 export type CreateTrpcKoaContextOptions = NodeHTTPCreateContextFnOptions<
   NodeHTTPRequest,
   NodeHTTPResponse
->;
-export type AdditionalMiddlewareOpts = { prefix?: `/${string}` };
-export type CreateKoaMiddlewareOptions<TRouter extends AnyRouter> = NodeHTTPHandlerOptions<
+> & { koaCtx: Context };
+
+type KoaCreateContextFn<TRouter extends AnyRouter> = (
+  opts: CreateTrpcKoaContextOptions,
+) => inferRouterContext<TRouter> | Promise<inferRouterContext<TRouter>>;
+
+// tRPC makes createContext optional only for routers that need no context.
+// Mirror that rule rather than flattening it to always-optional, which would
+// let a context-requiring router be mounted without one.
+type KoaCreateContextOpts<TRouter extends AnyRouter> =
+  object extends inferRouterContext<TRouter>
+    ? { createContext?: KoaCreateContextFn<TRouter> }
+    : { createContext: KoaCreateContextFn<TRouter> };
+
+type HandlerOpts<TRouter extends AnyRouter> = NodeHTTPHandlerOptions<
   TRouter,
   NodeHTTPRequest,
   NodeHTTPResponse
+>;
+
+export type AdditionalMiddlewareOpts = { prefix?: `/${string}` };
+export type CreateKoaMiddlewareOptions<TRouter extends AnyRouter> = Omit<
+  HandlerOpts<TRouter>,
+  'createContext'
 > &
+  KoaCreateContextOpts<TRouter> &
   AdditionalMiddlewareOpts;
 
 export const createKoaMiddleware =
   <TRouter extends AnyRouter>(opts: CreateKoaMiddlewareOptions<TRouter>): Middleware =>
   async (ctx, next) => {
-    const { prefix } = opts;
+    // createContext sits behind a conditional type, so widen it to destructure.
+    const { prefix, createContext, ...handlerOpts } = opts as Omit<
+      HandlerOpts<TRouter>,
+      'createContext'
+    > &
+      AdditionalMiddlewareOpts & { createContext?: KoaCreateContextFn<TRouter> };
     const { req, res, request } = ctx;
 
     // match on a path segment boundary, otherwise a prefix of `/trpc` also
@@ -61,17 +88,21 @@ export const createKoaMiddleware =
       req.body = request.body;
     }
 
-    req.koaCtx = ctx;
-
     // koa uses 404 as a default status but some logic in
     // nodeHTTPRequestHandler assumes default status of 200.
     // https://github.com/trpc/trpc/blob/abc941152b71ff2d68c63156eb5a142174779261/packages/server/src/adapters/node-http/nodeHTTPRequestHandler.ts#L63
     res.statusCode = 200;
 
     await nodeHTTPRequestHandler({
-      ...opts,
+      ...handlerOpts,
+      // wrap the caller's createContext so it also receives the koa context.
+      ...(createContext && {
+        createContext: (nodeOpts) => createContext({ ...nodeOpts, koaCtx: ctx }),
+      }),
       req,
       res,
       path: request.path.slice((prefix?.length ?? 0) + 1),
-    });
+      // the spread above satisfies the handler's conditional createContext
+      // requirement, which TypeScript cannot verify through the generic.
+    } as HandlerOpts<TRouter> & { req: NodeHTTPRequest; res: NodeHTTPResponse; path: string });
   };

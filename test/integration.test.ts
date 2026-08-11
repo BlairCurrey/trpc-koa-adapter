@@ -182,11 +182,11 @@ describe('Integration', () => {
         await next();
       });
 
-      const createContext = ({ req }: CreateTrpcKoaContextOptions) => ({
+      const createContext = ({ koaCtx }: CreateTrpcKoaContextOptions) => ({
         // TypeScript knows userId is number | undefined and userName is
         // string | undefined due to the augmentation in ./koa-state
-        userId: req.koaCtx?.state.userId,
-        userName: req.koaCtx?.state.userName,
+        userId: koaCtx.state.userId,
+        userName: koaCtx.state.userName,
       });
 
       const trpc = initTRPC.context<Awaited<ReturnType<typeof createContext>>>().create();
@@ -232,18 +232,16 @@ describe('Integration', () => {
   // koa's cookie handling. https://github.com/BlairCurrey/trpc-koa-adapter/issues/21
   describe('Koa Cookies', () => {
     const buildApp = () => {
-      const createContext = ({ req }: CreateTrpcKoaContextOptions) => ({
-        koaCtx: req.koaCtx,
-      });
+      const createContext = ({ koaCtx }: CreateTrpcKoaContextOptions) => ({ koaCtx });
 
       const trpc = initTRPC.context<Awaited<ReturnType<typeof createContext>>>().create();
       const router = trpc.router({
         login: trpc.procedure.mutation(({ ctx }) => {
-          ctx.koaCtx?.cookies.set('session', 'abc123', { httpOnly: true });
+          ctx.koaCtx.cookies.set('session', 'abc123', { httpOnly: true });
           return { loggedIn: true };
         }),
         whoami: trpc.procedure.query(({ ctx }) => ({
-          session: ctx.koaCtx?.cookies.get('session') ?? null,
+          session: ctx.koaCtx.cookies.get('session') ?? null,
         })),
       });
 

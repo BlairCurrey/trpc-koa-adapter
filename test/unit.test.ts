@@ -136,13 +136,35 @@ describe('createKoaMiddleware', () => {
       expect(handlerOptions().req).not.toHaveProperty('body');
     });
 
-    it('should attach the koa context to req.koaCtx', async () => {
-      const adapter = createKoaMiddleware({ router });
+    it('should hand the koa context to createContext', async () => {
+      const createContext = jest.fn();
+      const adapter = createKoaMiddleware({ router, createContext });
       const ctx = koaContext({ path: '/users', state: { userId: 123 } });
 
       await adapter(ctx, next);
 
-      expect(handlerOptions().req).toEqual(expect.objectContaining({ koaCtx: ctx }));
+      const wrapped = handlerOptions().createContext;
+      await wrapped({ req: ctx.req, res: ctx.res, info: {} });
+
+      expect(createContext).toHaveBeenCalledWith(
+        expect.objectContaining({ koaCtx: ctx, req: ctx.req, res: ctx.res }),
+      );
+    });
+
+    it('should not pass a createContext when none was given', async () => {
+      const adapter = createKoaMiddleware({ router });
+
+      await adapter(koaContext({ path: '/users' }), next);
+
+      expect(handlerOptions()).not.toHaveProperty('createContext');
+    });
+
+    it('should not attach the koa context to req', async () => {
+      const adapter = createKoaMiddleware({ router });
+
+      await adapter(koaContext({ path: '/users' }), next);
+
+      expect(handlerOptions().req).not.toHaveProperty('koaCtx');
     });
 
     // koa defaults to 404, which nodeHTTPRequestHandler treats as meaningful.
