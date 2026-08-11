@@ -17,7 +17,7 @@ class UserStore {
     this.users.push({ id: this.nextId(), name });
     return this.getLast();
   }
-  findById(id: Number) {
+  findById(id: number) {
     return this.users.find((user) => user.id === id);
   }
   getLast() {
@@ -27,10 +27,11 @@ class UserStore {
 
 const USERS = new UserStore();
 
-const createContext = ({ req, res }: CreateTrpcKoaContextOptions) => ({
+const createContext = ({ req, res, koaCtx }: CreateTrpcKoaContextOptions) => ({
   req,
   res,
-  isAuthed: () => req.headers.authorization === 'trustme',
+  user: koaCtx.state.authenticatedUser,
+  isAuthed: () => !!koaCtx.state.authenticatedUser,
 });
 type Context = Awaited<ReturnType<typeof createContext>>;
 
@@ -46,9 +47,7 @@ export const appRouter = t.router({
     .mutation(({ input, ctx }) => {
       // ctx should be fully typed here
       if (!ctx.isAuthed()) {
-        console.error('unauthorized');
-        new TRPCError({ code: 'UNAUTHORIZED', message: 'Unauthorized' });
-        return;
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Unauthorized' });
       }
       ctx.res.statusCode = 201;
       console.log('created');
@@ -60,13 +59,21 @@ export type AppRouter = typeof appRouter;
 
 const app = new Koa();
 
+// Simulate auth middleware that sets user data
+app.use(async (ctx, next) => {
+  if (ctx.headers.authorization === 'trustme') {
+    ctx.state.authenticatedUser = { id: 1, name: 'Alice' };
+  }
+  await next();
+});
+
 app.use(bodyParser());
 app.use(
   createKoaMiddleware({
     router: appRouter,
     createContext,
     prefix: '/trpc',
-  })
+  }),
 );
 
 const port = 3098;
