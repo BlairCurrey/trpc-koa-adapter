@@ -4,9 +4,6 @@ import { nodeHTTPRequestHandler } from '@trpc/server/adapters/node-http';
 import { createKoaMiddleware } from '../src';
 import './koa-state';
 
-// tRPC 11 freezes its module exports, so jest.spyOn cannot replace
-// nodeHTTPRequestHandler. Mocking the module is the supported way in.
-// https://github.com/BlairCurrey/trpc-koa-adapter/issues/31
 jest.mock('@trpc/server/adapters/node-http', () => ({
   ...jest.requireActual('@trpc/server/adapters/node-http'),
   nodeHTTPRequestHandler: jest.fn(),
