@@ -1,140 +1,129 @@
-import Koa from 'koa';
+import Koa, { Middleware } from 'koa';
 import request from 'supertest';
 import { initTRPC, TRPCError } from '@trpc/server';
-import { Server } from 'http';
 import koaBodyParserOld from 'koa-bodyparser';
 import koaBodyParser from '@koa/bodyparser';
 import { createKoaMiddleware, CreateTrpcKoaContextOptions } from '../src';
 import './koa-state';
 
-// This suite exercises the real nodeHTTPRequestHandler against a running Koa
-// server, so unlike the unit suite it must not mock it.
+type User = { id: number; name: string };
 
-describe('Integration', () => {
-  const ALL_USERS = [
+// Built per test so mutations from one test can't leak into the next.
+const createUsersApp = (middleware: Middleware[] = []) => {
+  const users: User[] = [
     { id: 1, name: 'bob' },
     { id: 2, name: 'alice' },
   ];
 
-  const createContext = async ({ req, res }: CreateTrpcKoaContextOptions) => {
-    return {
-      req,
-      res,
-      isAuthed: () => req.headers.authorization === 'trustme',
-    };
-  };
+  const createContext = async ({ req, res }: CreateTrpcKoaContextOptions) => ({
+    req,
+    res,
+    isAuthed: () => req.headers.authorization === 'trustme',
+  });
 
-  type TrpcContext = Awaited<ReturnType<typeof createContext>>;
-
-  const trpc = initTRPC.context<TrpcContext>().create();
-  const trpcRouter = trpc.router({
-    users: trpc.procedure.output(Object).query(() => {
-      return ALL_USERS;
-    }),
+  const trpc = initTRPC.context<Awaited<ReturnType<typeof createContext>>>().create();
+  const router = trpc.router({
+    users: trpc.procedure.output(Object).query(() => users),
     user: trpc.procedure
       .input(Number)
       .output(Object)
-      .query((req) => {
-        return ALL_USERS.find((user) => req.input === user.id);
-      }),
+      .query((req) => users.find((user) => req.input === user.id)),
     createUser: trpc.procedure.input(Object).mutation(({ input, ctx }) => {
       if (!ctx.isAuthed()) {
         ctx.res.statusCode = 401;
         return;
       }
 
-      const newUser = { id: Math.random(), name: input.name };
-      ALL_USERS.push(newUser);
+      const newUser = { id: users.length + 1, name: input.name };
+      users.push(newUser);
 
       return newUser;
     }),
   });
 
-  const adapter = createKoaMiddleware({
-    router: trpcRouter,
-    createContext,
-    prefix: '/trpc',
-  });
+  const app = new Koa();
+  middleware.forEach((item) => app.use(item));
+  app.use(createKoaMiddleware({ router, createContext, prefix: '/trpc' }));
 
-  const testCases = [
-    {
-      description: 'Without body parser',
-      middleware: [],
-    },
-    {
-      description: 'With koa-bodyparser',
-      middleware: [koaBodyParserOld()],
-    },
-    {
-      description: 'With @koa/bodyparser',
-      middleware: [koaBodyParser()],
-    },
+  return { app, users };
+};
+
+describe('Integration', () => {
+  const bodyParserCases = [
+    { description: 'Without body parser', middleware: () => [] },
+    { description: 'With koa-bodyparser', middleware: () => [koaBodyParserOld()] },
+    { description: 'With @koa/bodyparser', middleware: () => [koaBodyParser()] },
     {
       description: 'With @koa/bodyparser using patchNode',
-      middleware: [koaBodyParser({ patchNode: true, encoding: 'utf-8' })],
+      middleware: () => [koaBodyParser({ patchNode: true, encoding: 'utf-8' })],
     },
   ];
 
-  testCases.forEach(({ description, middleware }) => {
+  bodyParserCases.forEach(({ description, middleware }) => {
     describe(description, () => {
-      const app = new Koa();
-      middleware.forEach((middlewareItem) => app.use(middlewareItem));
-      app.use(adapter);
-      let server: Server;
+      let app: Koa;
+      let users: User[];
 
-      beforeEach(async () => (server = app.listen(3098)));
-      afterEach(async () => await server.close());
+      beforeEach(() => ({ app, users } = createUsersApp(middleware())));
 
       describe('Can call tRPC server endpoints succesfully', () => {
         it('GET /users', async () => {
-          const response = await request(server)
+          const response = await request(app.callback())
             .get('/trpc/users')
             .set('content-type', 'application/json');
 
           expect(response.headers['content-type']).toMatch(/json/);
           expect(response.status).toEqual(200);
-          expect(response.body.result.data).toEqual(ALL_USERS);
+          expect(response.body.result.data).toEqual([
+            { id: 1, name: 'bob' },
+            { id: 2, name: 'alice' },
+          ]);
         });
 
         it('GET /user?id=1', async () => {
-          const id = 1;
-          const response = await request(server)
+          const response = await request(app.callback())
             .get('/trpc/user')
             .set('content-type', 'application/json')
-            .query({ input: id });
+            .query({ input: 1 });
 
           expect(response.headers['content-type']).toMatch(/json/);
           expect(response.status).toEqual(200);
-          expect(response.body.result.data).toEqual(ALL_USERS.find((user) => user.id === id));
+          expect(response.body.result.data).toEqual({ id: 1, name: 'bob' });
         });
 
         it('POST /createUser', async () => {
-          const response = await request(server)
+          const response = await request(app.callback())
             .post('/trpc/createUser')
             .send({ name: 'eve' })
             .set('content-type', 'application/json')
             .set('authorization', 'trustme');
-          const { data: newUser } = response.body.result;
 
           expect(response.headers['content-type']).toMatch(/json/);
           expect(response.status).toEqual(200);
-          expect(newUser).toEqual(ALL_USERS.find((user) => user.id === newUser.id));
+          expect(response.body.result.data).toEqual({ id: 3, name: 'eve' });
+          expect(users).toEqual([
+            { id: 1, name: 'bob' },
+            { id: 2, name: 'alice' },
+            { id: 3, name: 'eve' },
+          ]);
         });
 
         it('POST /createUser: failed auth sets status (using ctx)', async () => {
-          const response = await request(server)
+          const response = await request(app.callback())
             .post('/trpc/createUser')
             .send({ name: 'eve' })
             .set('content-type', 'application/json');
 
           expect(response.headers['content-type']).toMatch(/json/);
           expect(response.status).toEqual(401);
+          expect(users).toHaveLength(2);
         });
       });
+
       describe('Bad requests fail as expected', () => {
         it('GET /some-non-existent-route', async () => {
-          const response = await request(server).get('/some-non-existent-route');
-          const response2 = await request(server).get('/trpc/some-non-existent-route');
+          const response = await request(app.callback()).get('/some-non-existent-route');
+          const response2 = await request(app.callback()).get('/trpc/some-non-existent-route');
 
           expect(response.status).toEqual(404);
           expect(response2.status).toEqual(404);
@@ -143,129 +132,147 @@ describe('Integration', () => {
     });
   });
 
-  describe('Koa Context Access', () => {
-    const app = new Koa();
+  // A prefix should only match whole path segments, so routes that merely share
+  // the prefix as a string still reach the rest of the koa stack.
+  describe('Prefix Matching', () => {
+    const buildApp = () => {
+      const trpc = initTRPC.create();
+      const router = trpc.router({
+        users: trpc.procedure.query(() => ['bob']),
+      });
 
-    // Middleware sets state
-    app.use(async (ctx, next) => {
-      if (ctx.request.headers.authorization === 'trustme') {
-        ctx.state.userId = 123;
-        ctx.state.userName = 'Alice';
-      }
-      await next();
+      const app = new Koa();
+      app.use(createKoaMiddleware({ router, prefix: '/trpc' }));
+      app.use(async (ctx) => {
+        ctx.status = 200;
+        ctx.body = 'downstream';
+      });
+
+      return app;
+    };
+
+    it('should route requests under the prefix to tRPC', async () => {
+      const response = await request(buildApp().callback()).get('/trpc/users');
+
+      expect(response.status).toEqual(200);
+      expect(response.body.result.data).toEqual(['bob']);
     });
 
-    const createContextWithState = ({ req }: CreateTrpcKoaContextOptions) => ({
-      // TypeScript knows userId is number | undefined and userName is string | undefined
-      // due to the module augmentation in ./koa-state
-      userId: req.koaCtx?.state.userId,
-      userName: req.koaCtx?.state.userName,
-    });
+    it.each(['/trpcfoo', '/trpc-admin/users', '/other'])(
+      'should pass %s to downstream middleware',
+      async (path) => {
+        const response = await request(buildApp().callback()).get(path);
 
-    type TrpcContextWithState = Awaited<ReturnType<typeof createContextWithState>>;
-
-    const trpcWithState = initTRPC.context<TrpcContextWithState>().create();
-    const trpcRouterWithState = trpcWithState.router({
-      me: trpcWithState.procedure.query(({ ctx }) => ({
-        userId: ctx.userId,
-        userName: ctx.userName,
-      })),
-    });
-
-    app.use(
-      createKoaMiddleware({
-        router: trpcRouterWithState,
-        createContext: createContextWithState,
-        prefix: '/trpc',
-      }),
+        expect(response.status).toEqual(200);
+        expect(response.text).toEqual('downstream');
+      },
     );
+  });
 
-    let server: Server;
+  describe('Koa Context Access', () => {
+    const buildApp = () => {
+      const app = new Koa();
 
-    beforeEach(async () => (server = app.listen(3099)));
-    afterEach(async () => await server.close());
+      // Middleware sets state
+      app.use(async (ctx, next) => {
+        if (ctx.request.headers.authorization === 'trustme') {
+          ctx.state.userId = 123;
+          ctx.state.userName = 'Alice';
+        }
+        await next();
+      });
+
+      const createContext = ({ req }: CreateTrpcKoaContextOptions) => ({
+        // TypeScript knows userId is number | undefined and userName is
+        // string | undefined due to the augmentation in ./koa-state
+        userId: req.koaCtx?.state.userId,
+        userName: req.koaCtx?.state.userName,
+      });
+
+      const trpc = initTRPC.context<Awaited<ReturnType<typeof createContext>>>().create();
+      const router = trpc.router({
+        me: trpc.procedure.query(({ ctx }) => ({
+          userId: ctx.userId,
+          userName: ctx.userName,
+        })),
+      });
+
+      app.use(createKoaMiddleware({ router, createContext, prefix: '/trpc' }));
+
+      return app;
+    };
 
     it('should access ctx.state in createContext', async () => {
-      const response = await request(server)
+      const response = await request(buildApp().callback())
         .get('/trpc/me')
         .set('authorization', 'trustme')
         .set('content-type', 'application/json');
 
       expect(response.status).toEqual(200);
-      expect(response.body.result.data).toEqual({
+      expect(response.body.result.data).toStrictEqual({
         userId: 123,
         userName: 'Alice',
       });
     });
 
     it('should handle missing auth (no state)', async () => {
-      const response = await request(server)
+      const response = await request(buildApp().callback())
         .get('/trpc/me')
         .set('content-type', 'application/json');
 
       expect(response.status).toEqual(200);
-      expect(response.body.result.data).toEqual({
-        userId: undefined,
-        userName: undefined,
-      });
+      // undefined values do not survive JSON, so the keys are absent entirely.
+      // toEqual would pass here even against a wrong response, since it ignores
+      // undefined-valued keys.
+      expect(response.body.result.data).toStrictEqual({});
     });
   });
 
   // Reading and writing cookies requires the Koa context, which exposes
   // koa's cookie handling. https://github.com/BlairCurrey/trpc-koa-adapter/issues/21
   describe('Koa Cookies', () => {
-    const app = new Koa();
+    const buildApp = () => {
+      const createContext = ({ req }: CreateTrpcKoaContextOptions) => ({
+        koaCtx: req.koaCtx,
+      });
 
-    const createCookieContext = ({ req }: CreateTrpcKoaContextOptions) => ({
-      koaCtx: req.koaCtx,
-    });
+      const trpc = initTRPC.context<Awaited<ReturnType<typeof createContext>>>().create();
+      const router = trpc.router({
+        login: trpc.procedure.mutation(({ ctx }) => {
+          ctx.koaCtx?.cookies.set('session', 'abc123', { httpOnly: true });
+          return { loggedIn: true };
+        }),
+        whoami: trpc.procedure.query(({ ctx }) => ({
+          session: ctx.koaCtx?.cookies.get('session') ?? null,
+        })),
+      });
 
-    type TrpcCookieContext = Awaited<ReturnType<typeof createCookieContext>>;
+      const app = new Koa();
+      app.use(createKoaMiddleware({ router, createContext, prefix: '/trpc' }));
 
-    const trpcCookies = initTRPC.context<TrpcCookieContext>().create();
-    const trpcCookieRouter = trpcCookies.router({
-      login: trpcCookies.procedure.mutation(({ ctx }) => {
-        ctx.koaCtx?.cookies.set('session', 'abc123', { httpOnly: true });
-        return { loggedIn: true };
-      }),
-      whoami: trpcCookies.procedure.query(({ ctx }) => ({
-        session: ctx.koaCtx?.cookies.get('session') ?? null,
-      })),
-    });
-
-    app.use(
-      createKoaMiddleware({
-        router: trpcCookieRouter,
-        createContext: createCookieContext,
-        prefix: '/trpc',
-      }),
-    );
-
-    let server: Server;
-
-    beforeEach(async () => (server = app.listen(3100)));
-    afterEach(async () => await server.close());
+      return app;
+    };
 
     it('should set a response cookie from a procedure', async () => {
-      const response = await request(server)
+      const response = await request(buildApp().callback())
         .post('/trpc/login')
         .set('content-type', 'application/json');
 
       expect(response.status).toEqual(200);
-      expect(response.body.result.data).toEqual({ loggedIn: true });
+      expect(response.body.result.data).toStrictEqual({ loggedIn: true });
       expect(response.headers['set-cookie']).toEqual(
         expect.arrayContaining([expect.stringContaining('session=abc123')]),
       );
     });
 
     it('should read a request cookie from a procedure', async () => {
-      const response = await request(server)
+      const response = await request(buildApp().callback())
         .get('/trpc/whoami')
         .set('content-type', 'application/json')
         .set('cookie', 'session=abc123');
 
       expect(response.status).toEqual(200);
-      expect(response.body.result.data).toEqual({ session: 'abc123' });
+      expect(response.body.result.data).toStrictEqual({ session: 'abc123' });
     });
   });
 
@@ -273,31 +280,20 @@ describe('Integration', () => {
   // handler, so onError never fired.
   // https://github.com/BlairCurrey/trpc-koa-adapter/pull/23
   describe('tRPC Handler Options', () => {
-    const app = new Koa();
-    const onError = jest.fn();
-
-    const trpcErrors = initTRPC.create();
-    const trpcErrorRouter = trpcErrors.router({
-      boom: trpcErrors.procedure.query(() => {
-        throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'boom' });
-      }),
-    });
-
-    app.use(
-      createKoaMiddleware({
-        router: trpcErrorRouter,
-        prefix: '/trpc',
-        onError,
-      }),
-    );
-
-    let server: Server;
-
-    beforeEach(async () => (server = app.listen(3101)));
-    afterEach(async () => await server.close());
-
     it('should call onError when a procedure throws', async () => {
-      const response = await request(server)
+      const onError = jest.fn();
+
+      const trpc = initTRPC.create();
+      const router = trpc.router({
+        boom: trpc.procedure.query(() => {
+          throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'boom' });
+        }),
+      });
+
+      const app = new Koa();
+      app.use(createKoaMiddleware({ router, prefix: '/trpc', onError }));
+
+      const response = await request(app.callback())
         .get('/trpc/boom')
         .set('content-type', 'application/json');
 

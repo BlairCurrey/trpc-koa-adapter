@@ -22,7 +22,7 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "rm -rf ./dist && tsc",
+    "build": "rm -rf ./dist && tsc -p tsconfig.build.json",
     "test": "jest",
     "prettier": "prettier --write .",
     "check:prettier": "prettier --check .",

@@ -47,7 +47,12 @@ export const createKoaMiddleware =
     const { prefix } = opts;
     const { req, res, request } = ctx;
 
-    if (prefix && !request.path.startsWith(prefix)) return next();
+    // match on a path segment boundary, otherwise a prefix of `/trpc` also
+    // claims sibling routes like `/trpc-admin/users` and hands tRPC a garbled
+    // path instead of falling through to the rest of the koa stack.
+    if (prefix && request.path !== prefix && !request.path.startsWith(`${prefix}/`)) {
+      return next();
+    }
 
     // put parsed body (by koa-bodyparser/@koa/bodyparser for example)
     // where nodeHTTPRequestHandler will look for it.

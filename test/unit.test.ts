@@ -1,4 +1,4 @@
-import { Context } from 'koa';
+import { Context, DefaultState } from 'koa';
 import { initTRPC } from '@trpc/server';
 import { nodeHTTPRequestHandler } from '@trpc/server/adapters/node-http';
 import { createKoaMiddleware } from '../src';
@@ -11,118 +11,161 @@ jest.mock('@trpc/server/adapters/node-http', () => ({
 
 const mockNodeHTTPRequestHandler = nodeHTTPRequestHandler as jest.Mock;
 
-describe('Unit', () => {
+// Minimal stand-in for a koa context. `body` is only set when supplied because
+// the middleware branches on `'body' in request`.
+const koaContext = ({
+  path,
+  body,
+  state,
+}: {
+  path: string;
+  body?: unknown;
+  state?: DefaultState;
+}) => {
+  const request: Record<string, unknown> = { path };
+  if (body !== undefined) request.body = body;
+
+  return { request, req: {}, res: {}, state: state ?? {} } as unknown as Context;
+};
+
+// The middleware is async, so every call must be awaited. Asserting
+// synchronously happens to work today only because nothing awaits before
+// nodeHTTPRequestHandler is called.
+const handlerOptions = () => mockNodeHTTPRequestHandler.mock.calls[0][0];
+
+describe('createKoaMiddleware', () => {
   const router = initTRPC.create().router({});
   const next = jest.fn();
 
-  it('should return a function accepting 2 arguments', () => {
-    const adapter = createKoaMiddleware({
-      router,
+  it('should return a koa middleware', () => {
+    expect(typeof createKoaMiddleware({ router })).toBe('function');
+  });
+
+  describe('routing', () => {
+    it('should call the handler when the path matches the prefix', async () => {
+      const adapter = createKoaMiddleware({ router, prefix: '/trpc' });
+
+      await adapter(koaContext({ path: '/trpc/users' }), next);
+
+      expect(next).not.toHaveBeenCalled();
+      expect(mockNodeHTTPRequestHandler).toHaveBeenCalled();
     });
-    expect(typeof adapter).toBe('function');
-    expect(adapter.length).toBe(2);
-  });
-  it('createKoaMiddleware should accept 1 argument', () => {
-    expect(createKoaMiddleware.length).toBe(1);
-  });
-  it('createKoaMiddleware should call nodeHTTPRequestHandler if request prefix matches', () => {
-    const adapter = createKoaMiddleware({ router, prefix: '/trpc' });
 
-    const ctx = {
-      request: {
-        path: '/trpc/users',
+    it('should call the handler when no prefix is configured', async () => {
+      const adapter = createKoaMiddleware({ router });
+
+      await adapter(koaContext({ path: '/users' }), next);
+
+      expect(next).not.toHaveBeenCalled();
+      expect(mockNodeHTTPRequestHandler).toHaveBeenCalled();
+    });
+
+    it('should call next and skip the handler when the path lacks the prefix', async () => {
+      const adapter = createKoaMiddleware({ router, prefix: '/trpc' });
+
+      await adapter(koaContext({ path: '/users' }), next);
+
+      expect(next).toHaveBeenCalled();
+      expect(mockNodeHTTPRequestHandler).not.toHaveBeenCalled();
+    });
+
+    // A prefix should only match whole path segments. Matching on the raw
+    // string means `/trpc` also swallows routes like `/trpc-admin/users`.
+    it.each(['/trpcfoo', '/trpc-admin/users', '/trpcy/users'])(
+      'should call next for %s, which only shares the prefix as a string',
+      async (path) => {
+        const adapter = createKoaMiddleware({ router, prefix: '/trpc' });
+
+        await adapter(koaContext({ path }), next);
+
+        expect(next).toHaveBeenCalled();
+        expect(mockNodeHTTPRequestHandler).not.toHaveBeenCalled();
       },
-      req: {},
-      res: {},
-    } as Context;
-
-    adapter(ctx, next);
-
-    expect(next).not.toHaveBeenCalled();
-    expect(mockNodeHTTPRequestHandler).toHaveBeenCalled();
-  });
-  it('createKoaMiddleware should call nodeHTTPRequestHandler if no prefix set', () => {
-    const adapter = createKoaMiddleware({ router });
-
-    const ctx = {
-      request: {
-        path: '/users',
-      },
-      req: {},
-      res: {},
-    } as Context;
-
-    adapter(ctx, next);
-
-    expect(next).not.toHaveBeenCalled();
-    expect(mockNodeHTTPRequestHandler).toHaveBeenCalled();
-  });
-  it('createKoaMiddleware should call next and not process request if prefix set and request doesnt have prefix', () => {
-    const adapter = createKoaMiddleware({ router, prefix: '/trpc' });
-
-    const ctx = {
-      request: {
-        path: '/users', // prefix missing from path
-      },
-    } as Context;
-
-    adapter(ctx, next);
-
-    expect(next).toHaveBeenCalled();
-    expect(mockNodeHTTPRequestHandler).not.toHaveBeenCalled();
-  });
-  it('createKoaMiddleware should call nodeHTTPRequestHandler with req.body if parsed body found on request.body', () => {
-    const adapter = createKoaMiddleware({ router });
-
-    const ctx = {
-      request: { path: '/users', body: { name: 'Person1', age: 20 } },
-      req: {},
-      res: {},
-    } as Context;
-    adapter(ctx, next);
-
-    expect(next).not.toHaveBeenCalled();
-    expect(mockNodeHTTPRequestHandler).toHaveBeenCalledWith(
-      expect.objectContaining({
-        req: expect.objectContaining({ body: ctx.request.body }),
-      }),
     );
   });
-  it('should attach Koa context to req.koaCtx', () => {
-    const adapter = createKoaMiddleware({ router });
-    const ctx = {
-      request: { path: '/users' },
-      req: {},
-      res: {},
-      state: { userId: 123 },
-    } as Context;
 
-    adapter(ctx, next);
+  describe('path forwarded to the handler', () => {
+    it('should strip the prefix', async () => {
+      const adapter = createKoaMiddleware({ router, prefix: '/trpc' });
 
-    expect(mockNodeHTTPRequestHandler).toHaveBeenCalledWith(
-      expect.objectContaining({
-        req: expect.objectContaining({ koaCtx: ctx }),
-      }),
-    );
+      await adapter(koaContext({ path: '/trpc/users' }), next);
+
+      expect(handlerOptions()).toEqual(expect.objectContaining({ path: 'users' }));
+    });
+
+    it('should keep nested segments below the prefix', async () => {
+      const adapter = createKoaMiddleware({ router, prefix: '/trpc' });
+
+      await adapter(koaContext({ path: '/trpc/nested.procedure' }), next);
+
+      expect(handlerOptions()).toEqual(expect.objectContaining({ path: 'nested.procedure' }));
+    });
+
+    it('should strip the leading slash when no prefix is configured', async () => {
+      const adapter = createKoaMiddleware({ router });
+
+      await adapter(koaContext({ path: '/users' }), next);
+
+      expect(handlerOptions()).toEqual(expect.objectContaining({ path: 'users' }));
+    });
+
+    it('should pass an empty path for a request to the bare prefix', async () => {
+      const adapter = createKoaMiddleware({ router, prefix: '/trpc' });
+
+      await adapter(koaContext({ path: '/trpc' }), next);
+
+      expect(handlerOptions()).toEqual(expect.objectContaining({ path: '' }));
+    });
   });
+
+  describe('request decoration', () => {
+    it('should copy a parsed body onto req.body', async () => {
+      const adapter = createKoaMiddleware({ router });
+      const body = { name: 'Person1', age: 20 };
+
+      await adapter(koaContext({ path: '/users', body }), next);
+
+      expect(handlerOptions().req).toEqual(expect.objectContaining({ body }));
+    });
+
+    it('should not set req.body when the request has no parsed body', async () => {
+      const adapter = createKoaMiddleware({ router });
+
+      await adapter(koaContext({ path: '/users' }), next);
+
+      expect(handlerOptions().req).not.toHaveProperty('body');
+    });
+
+    it('should attach the koa context to req.koaCtx', async () => {
+      const adapter = createKoaMiddleware({ router });
+      const ctx = koaContext({ path: '/users', state: { userId: 123 } });
+
+      await adapter(ctx, next);
+
+      expect(handlerOptions().req).toEqual(expect.objectContaining({ koaCtx: ctx }));
+    });
+
+    // koa defaults to 404, which nodeHTTPRequestHandler treats as meaningful.
+    it('should reset the status to 200 before handing off', async () => {
+      const adapter = createKoaMiddleware({ router });
+      const ctx = koaContext({ path: '/users' });
+
+      await adapter(ctx, next);
+
+      expect(ctx.res.statusCode).toBe(200);
+    });
+  });
+
   // The middleware used to pass only a hand-picked set of options through to
   // the handler, so options like onError were silently dropped.
   // https://github.com/BlairCurrey/trpc-koa-adapter/pull/23
-  it('should forward tRPC handler options to nodeHTTPRequestHandler', () => {
+  it('should forward tRPC handler options to nodeHTTPRequestHandler', async () => {
     const onError = jest.fn();
     const responseMeta = jest.fn(() => ({}));
     const adapter = createKoaMiddleware({ router, prefix: '/trpc', onError, responseMeta });
 
-    const ctx = {
-      request: { path: '/trpc/users' },
-      req: {},
-      res: {},
-    } as Context;
+    await adapter(koaContext({ path: '/trpc/users' }), next);
 
-    adapter(ctx, next);
-
-    expect(mockNodeHTTPRequestHandler).toHaveBeenCalledWith(
-      expect.objectContaining({ onError, responseMeta }),
-    );
+    expect(handlerOptions()).toEqual(expect.objectContaining({ onError, responseMeta }));
   });
 });
