@@ -8,8 +8,14 @@ import './koa-state';
 
 type User = { id: number; name: string };
 
+// @types/koa-bodyparser depends on `@types/koa: *`, so the body parsers can be
+// typed against a different copy of @types/koa than koa itself resolves to -
+// which happens on the koa 2 leg of the CI matrix. Take the middleware loosely
+// rather than coupling this suite to which copy wins.
+type BodyParserMiddleware = unknown;
+
 // Built per test so mutations from one test can't leak into the next.
-const createUsersApp = (middleware: Middleware[] = []) => {
+const createUsersApp = (middleware: BodyParserMiddleware[] = []) => {
   const users: User[] = [
     { id: 1, name: 'bob' },
     { id: 2, name: 'alice' },
@@ -42,7 +48,7 @@ const createUsersApp = (middleware: Middleware[] = []) => {
   });
 
   const app = new Koa();
-  middleware.forEach((item) => app.use(item));
+  middleware.forEach((item) => app.use(item as Middleware));
   app.use(createKoaMiddleware({ router, createContext, prefix: '/trpc' }));
 
   return { app, users };
